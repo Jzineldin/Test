@@ -1,0 +1,19 @@
+{
+  "carrier_id": "keystone_ins",
+  "name": "Keystone Mutual",
+  "submission_email": "newbiz@keystone-mutual.example",
+  "underwriter_name": "Marcus Bell",
+  "typical_quote_back_days": 7,
+  "notes": "Generalist mid-market on GL/Auto across most states. Strict on loss ratio above 60%.",
+  "appetite": [
+    {
+      "naics_prefixes": ["238", "236", "237", "484", "561"],
+      "states_in": [],
+      "states_out": ["LA", "MS"],
+      "lines": ["general_liability", "commercial_auto", "workers_comp"],
+      "revenue_max": "50000000",
+      "revenue_min": "1000000",
+      "notes": "Decline if any single PY incurred > 75% of premium."
+    }
+  ]
+}

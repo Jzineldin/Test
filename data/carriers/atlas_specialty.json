@@ -1,0 +1,27 @@
+{
+  "carrier_id": "atlas_specialty",
+  "name": "Atlas Specialty E&S",
+  "submission_email": "submissions@atlas-specialty.example",
+  "underwriter_name": "Janet Wu",
+  "typical_quote_back_days": 4,
+  "notes": "Strong on artisan contractors and habitational property in southern states. No NY or CA on GL.",
+  "appetite": [
+    {
+      "naics_prefixes": ["238", "236"],
+      "states_in": ["TX", "FL", "GA", "AZ", "NV", "TN", "NC", "SC", "OK", "AL"],
+      "states_out": ["NY", "CA"],
+      "lines": ["general_liability", "commercial_auto", "umbrella"],
+      "revenue_max": "15000000",
+      "revenue_min": "500000",
+      "notes": "Artisan contractors only — no new construction GCs."
+    },
+    {
+      "naics_prefixes": ["531"],
+      "states_in": ["TX", "FL", "GA", "TN", "NC", "SC"],
+      "states_out": [],
+      "lines": ["property"],
+      "revenue_max": "25000000",
+      "notes": "Habitational only with verified loss runs."
+    }
+  ]
+}
