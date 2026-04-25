@@ -59,14 +59,69 @@ def save_triage_run(
 
 
 def list_triage_runs(
-    session: Session, *, org_id: int, limit: int = 50,
+    session: Session,
+    *,
+    org_id: int,
+    limit: int = 50,
+    insured_search: str | None = None,
+    state: str | None = None,
+    since: datetime | None = None,
 ) -> list[TriageRun]:
-    """Most recent first, scoped to org."""
+    """Most recent first, scoped to org.
+
+    Optional filters:
+      * insured_search — substring match on insured_name (case-insensitive)
+      * state          — exact match on primary_state ('TX', 'CA', ...)
+      * since          — only runs created after this timestamp
+    """
     # id DESC breaks ties when two runs land in the same DB clock tick.
     stmt = (
         select(TriageRun)
         .where(TriageRun.org_id == org_id)
         .order_by(TriageRun.created_at.desc(), TriageRun.id.desc())
+        .limit(limit)
+    )
+    if insured_search:
+        stmt = stmt.where(TriageRun.insured_name.ilike(f"%{insured_search}%"))
+    if state:
+        stmt = stmt.where(TriageRun.primary_state == state.upper())
+    if since:
+        # Normalize the cutoff so SQLite's tz-naive storage can compare
+        cutoff = since.replace(tzinfo=None) if since.tzinfo else since
+        stmt = stmt.where(TriageRun.created_at >= cutoff)
+    return list(session.execute(stmt).scalars())
+
+
+def record_audit_event(
+    session: Session,
+    *,
+    org_id: int,
+    event_type: str,
+    target_id: str | None = None,
+    details: dict | None = None,
+    actor: str = "api-key",
+) -> None:
+    """Append-only — never updates an existing row."""
+    from .models import AuditEvent
+
+    session.add(AuditEvent(
+        org_id=org_id,
+        event_type=event_type,
+        actor=actor,
+        target_id=target_id,
+        details=details or {},
+    ))
+
+
+def list_audit_events(
+    session: Session, *, org_id: int, limit: int = 100,
+):
+    from .models import AuditEvent
+
+    stmt = (
+        select(AuditEvent)
+        .where(AuditEvent.org_id == org_id)
+        .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
         .limit(limit)
     )
     return list(session.execute(stmt).scalars())

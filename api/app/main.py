@@ -29,8 +29,10 @@ from .db import (
     get_draft,
     get_triage_run,
     init_db,
+    list_audit_events,
     list_triage_runs,
     mark_draft_sent,
+    record_audit_event,
     record_quote_reply,
     save_triage_run,
     session_scope,
@@ -92,13 +94,55 @@ def healthz() -> dict[str, str]:
 
 @app.get("/me")
 def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
-    return {
-        "org_id": org.id,
-        "org_name": org.name,
-        "slug": org.slug,
-        "plan": org.plan,
-        "monthly_submission_quota": org.monthly_submission_quota,
-    }
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        return {
+            "org_id": org.id,
+            "org_name": org.name,
+            "slug": org.slug,
+            "plan": org.plan,
+            "monthly_submission_quota": org.monthly_submission_quota,
+            "notification_webhook_url": row.notification_webhook_url,
+            "forward_inbox_address": row.forward_inbox_address,
+        }
+
+
+class OrgSettings(BaseModel):
+    """All fields optional — omitted ones are left untouched."""
+    name: str | None = None
+    notification_webhook_url: str | None = None
+    forward_inbox_address: str | None = None
+
+
+@app.patch("/me")
+def update_settings(
+    body: OrgSettings, org: CurrentOrg = Depends(current_org),
+) -> dict[str, Any]:
+    """Org-level settings update — webhook URL, inbox alias, display name."""
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        changes: dict[str, Any] = {}
+        if body.name is not None and body.name != row.name:
+            changes["name"] = body.name
+            row.name = body.name
+        if body.notification_webhook_url is not None:
+            changes["notification_webhook_url"] = bool(body.notification_webhook_url)
+            row.notification_webhook_url = body.notification_webhook_url or None
+        if body.forward_inbox_address is not None:
+            changes["forward_inbox_address"] = body.forward_inbox_address
+            row.forward_inbox_address = body.forward_inbox_address or None
+        if changes:
+            record_audit_event(
+                session, org_id=org.id, event_type="settings.updated",
+                details=changes,
+            )
+        return {
+            "name": row.name,
+            "notification_webhook_url": row.notification_webhook_url,
+            "forward_inbox_address": row.forward_inbox_address,
+        }
 
 
 @app.get("/carriers", response_model=list[Carrier])
@@ -139,6 +183,15 @@ def _run_and_persist(submission: Submission, org_id: int) -> TriageResult:
         by_carrier = {d.carrier_id: d.id for d in run.drafts}
         for d in result.drafted_emails:
             d.id = by_carrier.get(d.carrier_id)
+        record_audit_event(
+            session, org_id=org_id, event_type="triage.run",
+            target_id=str(run.id),
+            details={
+                "insured": submission.insured.legal_name,
+                "match_count": len(result.matches),
+                "draft_count": len(result.drafted_emails),
+            },
+        )
         logger.info(
             "triage.completed",
             extra={
@@ -203,10 +256,21 @@ class TriageRunDetail(TriageRunSummary):
 
 @app.get("/history", response_model=list[TriageRunSummary])
 def history(
-    limit: int = 50, org: CurrentOrg = Depends(current_org),
+    limit: int = 50,
+    insured: str | None = None,
+    state: str | None = None,
+    since: datetime | None = None,
+    org: CurrentOrg = Depends(current_org),
 ) -> list[TriageRunSummary]:
     with session_scope() as session:
-        runs = list_triage_runs(session, org_id=org.id, limit=limit)
+        runs = list_triage_runs(
+            session,
+            org_id=org.id,
+            limit=limit,
+            insured_search=insured,
+            state=state,
+            since=since,
+        )
         return [
             TriageRunSummary(
                 id=r.id,
@@ -218,6 +282,34 @@ def history(
                 created_at=r.created_at,
             )
             for r in runs
+        ]
+
+
+class AuditEventOut(BaseModel):
+    id: int
+    event_type: str
+    actor: str
+    target_id: str | None
+    details: dict[str, Any]
+    created_at: datetime
+
+
+@app.get("/audit", response_model=list[AuditEventOut])
+def audit(
+    limit: int = 100, org: CurrentOrg = Depends(current_org),
+) -> list[AuditEventOut]:
+    with session_scope() as session:
+        rows = list_audit_events(session, org_id=org.id, limit=limit)
+        return [
+            AuditEventOut(
+                id=r.id,
+                event_type=r.event_type,
+                actor=r.actor,
+                target_id=r.target_id,
+                details=r.details or {},
+                created_at=r.created_at,
+            )
+            for r in rows
         ]
 
 
@@ -271,6 +363,11 @@ def send_draft(
         client = get_email_client()
         sent = client.send(to=draft.to, subject=draft.subject, body=draft.body)
         mark_draft_sent(draft, provider_message_id=sent.provider_message_id)
+        record_audit_event(
+            session, org_id=org.id, event_type="draft.sent",
+            target_id=str(draft.id),
+            details={"to": draft.to, "carrier_id": draft.carrier_id},
+        )
         return _draft_to_status(draft)
 
 
@@ -310,12 +407,21 @@ def edit_draft(
             raise HTTPException(404, detail=f"Draft {draft_id} not found")
         if draft.sent_at is not None:
             raise HTTPException(409, detail="Cannot edit a draft after it has been sent")
-        if body.subject is not None:
+        changed: dict[str, Any] = {}
+        if body.subject is not None and body.subject != draft.subject:
+            changed["subject"] = True
             draft.subject = body.subject
-        if body.body is not None:
+        if body.body is not None and body.body != draft.body:
+            changed["body"] = True
             draft.body = body.body
-        if body.to is not None:
+        if body.to is not None and body.to != draft.to:
+            changed["to"] = body.to
             draft.to = body.to
+        if changed:
+            record_audit_event(
+                session, org_id=org.id, event_type="draft.edited",
+                target_id=str(draft.id), details=changed,
+            )
         return _draft_to_status(draft)
 
 
@@ -327,6 +433,26 @@ class InboundReply(BaseModel):
     """
     provider_message_id: str
     body: str
+
+
+class InboundAttachment(BaseModel):
+    filename: str
+    content_type: str | None = None
+    content_base64: str
+
+
+class InboundEmail(BaseModel):
+    """Forwarded retail-agent email landing in our inbound webhook.
+
+    Mirrors Postmark's inbound JSON shape. SES Inbound delivers an SNS
+    notification with an S3 pointer; an upstream Lambda is responsible
+    for fetching the raw email and converting it to this shape.
+    """
+    to: str  # the org's forward_inbox_address (e.g. triage+demo@yourdomain.com)
+    from_address: str
+    subject: str | None = None
+    body: str | None = None
+    attachments: list[InboundAttachment] = []
 
 
 @app.post("/webhooks/inbound", response_model=DraftStatus | None)
@@ -401,6 +527,14 @@ def update_outcome(
             )
         except ValueError as e:
             raise HTTPException(400, detail=str(e)) from e
+        record_audit_event(
+            session, org_id=org.id, event_type="outcome.set",
+            target_id=str(draft.id),
+            details={
+                "outcome": body.outcome,
+                "bound_premium_cents": body.bound_premium_cents,
+            },
+        )
         return _draft_to_status(draft)
 
 
@@ -496,6 +630,48 @@ def reports_digest(
                 ))
     items.sort(key=lambda i: i.when, reverse=True)
     return items
+
+
+@app.post("/webhooks/email", response_model=TriageResult | dict)
+def inbound_email(payload: InboundEmail) -> TriageResult | dict:
+    """A forwarded retail-agent email lands here, ACORD attached.
+
+    Public endpoint (no auth) — we resolve the org by matching the `to`
+    address against `Org.forward_inbox_address`. Each broker gets a
+    unique inbox alias they configure under PATCH /me.
+
+    The first PDF attachment runs through DocAI -> triage. Returns the
+    TriageResult on success; a structured 'unmatched' dict if no org
+    owns the inbox or no PDF was attached, so SES retries don't loop.
+    """
+    import base64
+
+    pdfs = [a for a in payload.attachments if (a.content_type or "").lower() == "application/pdf"
+            or a.filename.lower().endswith(".pdf")]
+    if not pdfs:
+        return {"status": "skipped", "reason": "no PDF attached"}
+
+    with session_scope() as session:
+        from sqlalchemy import select
+        from .db.models import Org as OrgRow
+        org_row = session.execute(
+            select(OrgRow).where(OrgRow.forward_inbox_address == payload.to)
+        ).scalar_one_or_none()
+        if org_row is None:
+            logger.info("inbound_email.unmatched", extra={"to": payload.to})
+            return {"status": "unmatched", "to": payload.to}
+        org_id = org_row.id
+
+    pdf_bytes = base64.b64decode(pdfs[0].content_base64)
+    try:
+        submission = DocAiParser().parse_bytes(pdf_bytes)
+    except RuntimeError as e:
+        # DocAI not configured — record + skip; SES doesn't need a 5xx here.
+        logger.warning("inbound_email.docai_unconfigured", extra={"err": str(e)})
+        return {"status": "skipped", "reason": "DocAI not configured"}
+
+    submission.retail_agent_email = payload.from_address
+    return _run_and_persist(submission, org_id=org_id)
 
 
 @app.get("/history/export.csv")

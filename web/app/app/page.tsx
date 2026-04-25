@@ -32,6 +32,8 @@ export default function Home() {
   const [apiKey, setApiKey] = useState<string>("");
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [report, setReport] = useState<ReportPayload | null>(null);
+  const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "" });
+  const [showSettings, setShowSettings] = useState(false);
 
   // Hydrate API key from localStorage; default to demo key on first visit.
   useEffect(() => {
@@ -47,14 +49,17 @@ export default function Home() {
   const loadHistory = useCallback(async () => {
     if (!apiKey) return;
     try {
-      const res = await fetch(`${API_URL}/history?limit=20`, {
+      const params = new URLSearchParams({ limit: "20" });
+      if (historyQuery.insured) params.set("insured", historyQuery.insured);
+      if (historyQuery.state) params.set("state", historyQuery.state);
+      const res = await fetch(`${API_URL}/history?${params}`, {
         headers: authHeaders(apiKey),
       });
       if (res.ok) setHistory((await res.json()) as TriageRunSummary[]);
     } catch {
       /* history is best-effort; ignore failures */
     }
-  }, [apiKey]);
+  }, [apiKey, historyQuery]);
 
   const loadUsage = useCallback(async () => {
     if (!apiKey) return;
@@ -176,9 +181,19 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Settings
+          </button>
           <ApiKeyInput value={apiKey} onChange={persistKey} />
         </div>
       </header>
+
+      {showSettings && (
+        <SettingsPanel apiKey={apiKey} onClose={() => setShowSettings(false)} />
+      )}
 
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
         <div>
@@ -253,8 +268,126 @@ export default function Home() {
       </section>
 
       {report && <ReportStrip report={report} />}
-      <History history={history} onOpen={openHistoryRun} apiKey={apiKey} />
+      <History
+        history={history}
+        onOpen={openHistoryRun}
+        apiKey={apiKey}
+        query={historyQuery}
+        onQueryChange={setHistoryQuery}
+      />
     </main>
+  );
+}
+
+function SettingsPanel({
+  apiKey,
+  onClose,
+}: {
+  apiKey: string;
+  onClose: () => void;
+}) {
+  const [me, setMe] = useState<{
+    name: string;
+    notification_webhook_url: string | null;
+    forward_inbox_address: string | null;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/me`, { headers: authHeaders(apiKey) })
+      .then((r) => r.json())
+      .then((b) => setMe({
+        name: b.org_name,
+        notification_webhook_url: b.notification_webhook_url,
+        forward_inbox_address: b.forward_inbox_address,
+      }));
+  }, [apiKey]);
+
+  async function save() {
+    if (!me) return;
+    setSaving(true);
+    const r = await fetch(`${API_URL}/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify(me),
+    });
+    setSaving(false);
+    if (r.ok) setSavedAt(new Date().toLocaleTimeString());
+  }
+
+  if (!me) return null;
+  return (
+    <section className="mb-8 rounded-md border border-slate-800 bg-slate-950 p-5">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+          Org settings
+        </h2>
+        <button
+          onClick={onClose}
+          className="text-xs text-slate-500 hover:text-slate-300"
+        >
+          Close
+        </button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field
+          label="Display name"
+          value={me.name}
+          onChange={(v) => setMe({ ...me, name: v })}
+        />
+        <Field
+          label="Slack/Discord/MS Teams webhook URL"
+          value={me.notification_webhook_url ?? ""}
+          onChange={(v) =>
+            setMe({ ...me, notification_webhook_url: v || null })
+          }
+          placeholder="https://hooks.slack.com/services/..."
+        />
+        <Field
+          label="Forward-inbox alias (for SES Inbound)"
+          value={me.forward_inbox_address ?? ""}
+          onChange={(v) =>
+            setMe({ ...me, forward_inbox_address: v || null })
+          }
+          placeholder="triage+yourorg@yourdomain.com"
+        />
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        {savedAt && <span className="text-xs text-emerald-400">✓ saved {savedAt}</span>}
+      </div>
+    </section>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs uppercase tracking-widest text-slate-500">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 block w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+      />
+    </label>
   );
 }
 
@@ -311,13 +444,15 @@ function History({
   history,
   onOpen,
   apiKey,
+  query,
+  onQueryChange,
 }: {
   history: TriageRunSummary[];
   onOpen: (id: number) => void;
   apiKey: string;
+  query: { insured: string; state: string };
+  onQueryChange: (q: { insured: string; state: string }) => void;
 }) {
-  if (history.length === 0) return null;
-
   function downloadCsv() {
     // Trigger an authed download via a temporary anchor + fetch.
     fetch(`${API_URL}/history/export.csv`, { headers: authHeaders(apiKey) })
@@ -334,16 +469,32 @@ function History({
 
   return (
     <section className="mt-12 border-t border-slate-800 pt-8">
-      <div className="mb-3 flex items-baseline justify-between">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
           Recent triage runs ({history.length})
         </h2>
-        <button
-          onClick={downloadCsv}
-          className="rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-900"
-        >
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={query.insured}
+            onChange={(e) => onQueryChange({ ...query, insured: e.target.value })}
+            placeholder="Filter by insured…"
+            className="w-56 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+          />
+          <input
+            value={query.state}
+            onChange={(e) =>
+              onQueryChange({ ...query, state: e.target.value.toUpperCase().slice(0, 2) })
+            }
+            placeholder="ST"
+            className="w-16 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-center text-xs uppercase text-slate-200 focus:border-emerald-500 focus:outline-none"
+          />
+          <button
+            onClick={downloadCsv}
+            className="rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border border-slate-800">
         <table className="w-full text-sm">

@@ -42,12 +42,39 @@ class Org(Base):
     plan: Mapped[str] = mapped_column(String(32), default="trial")
     monthly_submission_quota: Mapped[int] = mapped_column(Integer, default=50)
     notification_webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    forward_inbox_address: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )
 
     runs: Mapped[list["TriageRun"]] = relationship(
         back_populates="org", cascade="all, delete-orphan",
+    )
+
+
+class AuditEvent(Base):
+    """Append-only event log.
+
+    Every state change a broker would care to audit lands here:
+      * triage.run            (a new submission was triaged)
+      * draft.sent            (an email left the system)
+      * draft.edited          (broker tweaked the LLM output)
+      * outcome.set           (broker recorded bound/declined)
+      * settings.updated      (org config change)
+
+    Cheap enough to write on every action. Backed by JSON `details` so
+    new event types don't require schema changes.
+    """
+    __tablename__ = "audit_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), index=True)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)
+    actor: Mapped[str] = mapped_column(String(128), default="api-key")
+    target_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True,
     )
 
 
