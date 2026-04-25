@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
   BillingUsage,
@@ -14,14 +15,28 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const STRIPE_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ?? "price_demo";
 const API_KEY_STORAGE = "submission-triage-api-key";
-const DEFAULT_DEMO_KEY = "demo-key-change-in-prod";
 type Mode = "pdf" | "json";
 
+type Me = {
+  org_id: number;
+  org_name: string;
+  slug: string;
+  plan: string;
+  monthly_submission_quota: number;
+};
+
+/** Bearer header for the optional api-key path. Always co-fired with
+ *  `credentials: "include"` so the cookie session is also sent. */
 function authHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
+  return apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+}
+
+function requestInit(apiKey: string, base: RequestInit = {}): RequestInit {
+  return { ...base, credentials: "include", headers: { ...authHeaders(apiKey), ...(base.headers as Record<string, string>) } };
 }
 
 export default function Home() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("pdf");
   const [submissionJson, setSubmissionJson] = useState(
     JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2),
@@ -32,73 +47,112 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<TriageRunSummary[]>([]);
   const [apiKey, setApiKey] = useState<string>("");
+  const [me, setMe] = useState<Me | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "" });
   const [showSettings, setShowSettings] = useState(false);
   const [digest, setDigest] = useState<DigestItem[]>([]);
 
-  // Hydrate API key from localStorage; default to demo key on first visit.
+  // Hydrate any manually-set api key (legacy / dev users).
   useEffect(() => {
-    const stored = localStorage.getItem(API_KEY_STORAGE);
-    setApiKey(stored ?? DEFAULT_DEMO_KEY);
+    setApiKey(localStorage.getItem(API_KEY_STORAGE) ?? "");
   }, []);
+
+  // Gate the page behind /me. Cookie OR api key both unlock it; failing
+  // both we punt to /login.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/me`, requestInit(apiKey));
+        if (cancelled) return;
+        if (res.ok) {
+          setMe((await res.json()) as Me);
+        } else if (res.status === 401) {
+          router.replace("/login");
+          return;
+        }
+      } catch {
+        /* network blip — leave authChecked false so we retry on rerender */
+        return;
+      }
+      setAuthChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey, router]);
 
   function persistKey(key: string) {
     setApiKey(key);
     localStorage.setItem(API_KEY_STORAGE, key);
   }
 
+  async function logout() {
+    await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    localStorage.removeItem(API_KEY_STORAGE);
+    router.replace("/login");
+  }
+
   const loadHistory = useCallback(async () => {
-    if (!apiKey) return;
+    if (!authChecked) return;
     try {
       const params = new URLSearchParams({ limit: "20" });
       if (historyQuery.insured) params.set("insured", historyQuery.insured);
       if (historyQuery.state) params.set("state", historyQuery.state);
       const res = await fetch(`${API_URL}/history?${params}`, {
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (res.ok) setHistory((await res.json()) as TriageRunSummary[]);
     } catch {
       /* history is best-effort; ignore failures */
     }
-  }, [apiKey, historyQuery]);
+  }, [apiKey, historyQuery, authChecked]);
 
   const loadUsage = useCallback(async () => {
-    if (!apiKey) return;
+    if (!authChecked) return;
     try {
       const res = await fetch(`${API_URL}/billing/usage`, {
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (res.ok) setUsage((await res.json()) as BillingUsage);
     } catch {
       /* usage is best-effort */
     }
-  }, [apiKey]);
+  }, [apiKey, authChecked]);
 
   const loadReport = useCallback(async () => {
-    if (!apiKey) return;
+    if (!authChecked) return;
     try {
       const res = await fetch(`${API_URL}/reports/summary`, {
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (res.ok) setReport((await res.json()) as ReportPayload);
     } catch {
       /* report is best-effort */
     }
-  }, [apiKey]);
+  }, [apiKey, authChecked]);
 
   const loadDigest = useCallback(async () => {
-    if (!apiKey) return;
+    if (!authChecked) return;
     try {
       const res = await fetch(`${API_URL}/reports/digest`, {
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (res.ok) setDigest((await res.json()) as DigestItem[]);
     } catch {
       /* digest is best-effort */
     }
-  }, [apiKey]);
+  }, [apiKey, authChecked]);
 
   useEffect(() => {
     loadHistory();
@@ -130,7 +184,8 @@ export default function Home() {
     try {
       const res = await fetch(`${API_URL}/drafts/${draftId}/send`, {
         method: "POST",
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       const updated = (await res.json()) as { id: number; sent_at: string | null };
@@ -159,6 +214,7 @@ export default function Home() {
     if (bound_premium_cents != null) body.bound_premium_cents = bound_premium_cents;
     const res = await fetch(`${API_URL}/drafts/${draftId}/outcome`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify(body),
     });
@@ -173,7 +229,8 @@ export default function Home() {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/history/${runId}`, {
-        headers: authHeaders(apiKey),
+        credentials: "include",
+      headers: authHeaders(apiKey),
       });
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       const detail = (await res.json()) as TriageRunDetail;
@@ -191,6 +248,7 @@ export default function Home() {
     form.append("file", pdfFile);
     return fetch(`${API_URL}/triage/upload`, {
       method: "POST",
+      credentials: "include",
       headers: authHeaders(apiKey),
       body: form,
     });
@@ -200,16 +258,27 @@ export default function Home() {
     const parsed = JSON.parse(submissionJson);
     return fetch(`${API_URL}/triage`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify(parsed),
     });
+  }
+
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center text-sm text-slate-400">
+        Loading…
+      </main>
+    );
   }
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
       <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Submission Triage</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {me?.org_name ?? "AppetiteMatch"}
+          </h1>
           <p className="mt-1 text-sm text-slate-400">
             Wholesale broker workflow — ACORD in, carrier-ready submissions out.
           </p>
@@ -222,7 +291,12 @@ export default function Home() {
           >
             Settings
           </button>
-          <ApiKeyInput value={apiKey} onChange={persistKey} />
+          <button
+            onClick={logout}
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -335,7 +409,7 @@ function SettingsPanel({
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/me`, { headers: authHeaders(apiKey) })
+    fetch(`${API_URL}/me`, { headers: authHeaders(apiKey), credentials: "include" })
       .then((r) => r.json())
       .then((b) => setMe({
         name: b.org_name,
@@ -349,6 +423,7 @@ function SettingsPanel({
     setSaving(true);
     const r = await fetch(`${API_URL}/me`, {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify(me),
     });
@@ -537,7 +612,7 @@ function History({
 }) {
   function downloadCsv() {
     // Trigger an authed download via a temporary anchor + fetch.
-    fetch(`${API_URL}/history/export.csv`, { headers: authHeaders(apiKey) })
+    fetch(`${API_URL}/history/export.csv`, { headers: authHeaders(apiKey), credentials: "include" })
       .then((r) => r.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
@@ -633,6 +708,7 @@ function UsageBadge({
   async function upgrade() {
     const res = await fetch(`${API_URL}/billing/checkout-link`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify({
         price_id: STRIPE_PRICE_ID,
@@ -697,7 +773,7 @@ function ApiKeyInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         spellCheck={false}
-        placeholder={DEFAULT_DEMO_KEY}
+        placeholder="paste a key (or leave blank for cookie auth)"
         className="w-56 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 font-mono text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
       />
     </label>
