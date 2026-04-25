@@ -328,8 +328,33 @@ def _carriers_or_503() -> list[Carrier]:
     return carriers
 
 
-def _run_and_persist(submission: Submission, org_id: int) -> TriageResult:
-    result = triage_submission(submission, _carriers_or_503(), llm=get_client())
+def _broker_profile(org_id: int) -> dict:
+    """Snapshot of org info the email drafter uses to fill in the
+    signature. Pulled fresh each triage so a name change in Settings
+    shows up on the next draft."""
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org_id)
+        if row is None:
+            return {}
+        return {
+            "brokerage_name": row.name,
+            "contact_email": (row.forward_inbox_address or "").strip() or None,
+        }
+
+
+def _run_and_persist(
+    submission: Submission,
+    org_id: int,
+    *,
+    attachments: list[str] | None = None,
+) -> TriageResult:
+    result = triage_submission(
+        submission, _carriers_or_503(),
+        llm=get_client(),
+        broker_profile=_broker_profile(org_id),
+        attachments=attachments,
+    )
     with session_scope() as session:
         run = save_triage_run(session, submission, result, org_id=org_id)
         # Echo back the persisted draft ids so the dashboard can call
@@ -387,7 +412,13 @@ async def triage_upload(
         submission = DocAiParser().parse_bytes(pdf_bytes)
     except RuntimeError as e:
         raise HTTPException(503, detail=str(e)) from e
-    return _run_and_persist(submission, org_id=org.id)
+    # The original PDF the broker uploaded is what they'd actually want
+    # forwarded to carriers. Reference its filename so the cover email
+    # references a real attachment.
+    return _run_and_persist(
+        submission, org_id=org.id,
+        attachments=[file.filename or "submission.pdf"],
+    )
 
 
 # ---- History ---------------------------------------------------------------

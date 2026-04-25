@@ -32,9 +32,18 @@ def test_triage_threshold_blocks_drafts(carriers, acme_submission):
     assert result.drafted_emails == []
 
 
-def test_drafts_carry_attachments_and_real_email(carriers, acme_submission):
-    result = triage_submission(acme_submission, carriers, llm=StubClient())
-    for draft in result.drafted_emails:
+def test_drafts_pass_attachments_through_when_provided(carriers, acme_submission):
+    """When the upload path forwards a PDF, the draft references it; when JSON
+    is pasted with no PDF, the draft has no phantom attachment list."""
+    with_pdf = triage_submission(
+        acme_submission, carriers, llm=StubClient(),
+        attachments=["acme_acord_125.pdf"],
+    )
+    for draft in with_pdf.drafted_emails:
         assert "@" in draft.to
         assert draft.subject.strip()
-        assert draft.attachments, "every draft should reference attached forms"
+        assert draft.attachments == ["acme_acord_125.pdf"]
+
+    json_only = triage_submission(acme_submission, carriers, llm=StubClient())
+    for draft in json_only.drafted_emails:
+        assert draft.attachments == []

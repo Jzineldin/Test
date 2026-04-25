@@ -29,10 +29,15 @@ history concerns as risk_flags."""
 
 
 DRAFT_SYSTEM = """You are a wholesale broker writing the cover email that goes \
-to a carrier underwriter alongside an ACORD packet. Tone is concise, factual, \
-and respectful of the underwriter's time. Lead with the most relevant facts \
-for THIS carrier's appetite. Never invent figures — only use values from the \
-provided submission JSON."""
+to a carrier underwriter. Tone is concise, factual, respectful of the \
+underwriter's time. Lead with the most relevant facts for THIS carrier's \
+appetite. Never invent figures — only use values from the provided submission \
+JSON. Never claim a document is attached unless ATTACHMENTS is non-empty in \
+the task. When ATTACHMENTS is empty, the email body must contain ALL the \
+underwriting data the carrier needs (limits, loss runs as text, fleet size, \
+etc.) so the carrier can quote without follow-up. Sign the email with the \
+broker's name and brokerage from BROKER_PROFILE — never use placeholder \
+brackets like [Broker Name]."""
 
 
 def _appetite_user_prompt(submission: Submission, carriers: list[Carrier]) -> str:
@@ -48,7 +53,15 @@ def _appetite_user_prompt(submission: Submission, carriers: list[Carrier]) -> st
     )
 
 
-def _draft_user_prompt(submission: Submission, carrier: Carrier, match: AppetiteMatch) -> str:
+def _draft_user_prompt(
+    submission: Submission,
+    carrier: Carrier,
+    match: AppetiteMatch,
+    *,
+    broker_profile: dict | None,
+    attachments: list[str],
+) -> str:
+    profile = broker_profile or {}
     return (
         "DRAFT_EMAIL_TASK\n\n"
         f"Write the cover email to {carrier.name} ({carrier.submission_email}) "
@@ -57,7 +70,9 @@ def _draft_user_prompt(submission: Submission, carrier: Carrier, match: Appetite
         f"quote-back timeline at the close. Return JSON of shape "
         '{"subject": "...", "body": "..."}.\n\n'
         f"APPETITE_RATIONALE: {match.rationale}\n"
-        f"RISK_FLAGS: {match.risk_flags}\n\n"
+        f"RISK_FLAGS: {match.risk_flags}\n"
+        f"ATTACHMENTS: {json.dumps(attachments)}\n"
+        f"BROKER_PROFILE: {json.dumps(profile)}\n\n"
         "SUBMISSION:\n"
         + submission.model_dump_json(indent=2)
         + "\n\nCARRIER_APPETITE:\n"
@@ -102,8 +117,11 @@ def _draft_emails(
     llm: LlmClient,
     *,
     score_threshold: float = 0.5,
+    broker_profile: dict | None = None,
+    attachments: list[str] | None = None,
 ) -> list[DraftedEmail]:
     by_id = {c.carrier_id: c for c in carriers}
+    attachment_names = list(attachments or [])
     drafts: list[DraftedEmail] = []
     for match in matches:
         if match.score < score_threshold:
@@ -111,7 +129,11 @@ def _draft_emails(
         carrier = by_id[match.carrier_id]
         response = llm.complete_json(
             system=DRAFT_SYSTEM,
-            user=_draft_user_prompt(submission, carrier, match),
+            user=_draft_user_prompt(
+                submission, carrier, match,
+                broker_profile=broker_profile,
+                attachments=attachment_names,
+            ),
             max_tokens=1500,
         )
         drafts.append(DraftedEmail(
@@ -119,7 +141,7 @@ def _draft_emails(
             to=carrier.submission_email,
             subject=response.get("subject", "New Submission"),
             body=response.get("body", ""),
-            attachments=["ACORD_125.pdf", "ACORD_126.pdf", "loss_runs.pdf"],
+            attachments=attachment_names,
         ))
     return drafts
 
@@ -130,12 +152,26 @@ def triage_submission(
     *,
     llm: LlmClient | None = None,
     score_threshold: float = 0.5,
+    broker_profile: dict | None = None,
+    attachments: list[str] | None = None,
 ) -> TriageResult:
-    """Run the full triage flow for a single submission."""
+    """Run the full triage flow for a single submission.
+
+    `broker_profile` is the broker's org/contact info (name, brokerage,
+    phone, email) — threaded into the email-draft prompt so signatures
+    aren't `[Broker Name]` placeholders.
+    `attachments` is the list of filenames the broker is sending alongside
+    the cover email. Empty/None tells the drafter to embed all data inline
+    rather than claim phantom ACORDs."""
     llm = llm or get_client()
     eligible = prefilter(carriers, submission)
     matches, summary = _score_appetite(submission, eligible, llm)
-    drafts = _draft_emails(submission, matches, eligible, llm, score_threshold=score_threshold)
+    drafts = _draft_emails(
+        submission, matches, eligible, llm,
+        score_threshold=score_threshold,
+        broker_profile=broker_profile,
+        attachments=attachments,
+    )
     return TriageResult(
         submission_id=submission.submission_id,
         matches=matches,
