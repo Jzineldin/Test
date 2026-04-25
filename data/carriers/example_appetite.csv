@@ -1,0 +1,4 @@
+carrier_id,name,submission_email,underwriter_name,typical_quote_back_days,notes,naics_prefixes,states_in,states_out,lines,revenue_min,revenue_max,rule_notes
+your_carrier_a,Your Carrier A,submissions@carriera.example,Jane Doe,5,Generalist mid-market on contractors,238|236,,LA|MS,general_liability|commercial_auto,1000000,50000000,No new construction GCs
+your_carrier_a,,,,,,531,TX|FL|GA,,property,,25000000,Habitational only with verified loss runs
+your_carrier_b,Your Carrier B,intake@carrierb.example,Marcus Bell,3,Small accounts under $5M,238|541|811,TX|OK|AR|NM|LA,,general_liability|professional_liability,,5000000,Quote-back inside 72h

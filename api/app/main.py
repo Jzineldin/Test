@@ -79,6 +79,23 @@ def list_carriers(_: CurrentOrg = Depends(current_org)) -> list[Carrier]:
     return load_carriers(CARRIERS_DIR)
 
 
+@app.post("/carriers", response_model=Carrier, status_code=201)
+def upsert_carrier(
+    carrier: Carrier, _: CurrentOrg = Depends(current_org),
+) -> Carrier:
+    """Write a carrier appetite guide to disk.
+
+    Today carriers are JSON files on disk shared across orgs. When we move
+    to per-org carrier libraries this becomes a row in a `carriers` table
+    keyed on (org_id, carrier_id). Same input shape, just different store.
+    """
+    import json
+    target = Path(CARRIERS_DIR) / f"{carrier.carrier_id}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(carrier.model_dump(mode="json"), indent=2))
+    return carrier
+
+
 def _carriers_or_503() -> list[Carrier]:
     carriers = load_carriers(CARRIERS_DIR)
     if not carriers:
