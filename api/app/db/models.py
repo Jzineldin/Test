@@ -100,5 +100,8 @@ class DraftedEmailRow(Base):
     body: Mapped[str] = mapped_column(Text)
     attachments: Mapped[list[str]] = mapped_column(JSON, default=list)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider_message_id: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
+    quote_replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    quote_reply_body: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     run: Mapped[TriageRun] = relationship(back_populates="drafts")

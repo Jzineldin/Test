@@ -1,5 +1,12 @@
 from .session import SessionLocal, engine, init_db, session_scope
-from .repository import save_triage_run, list_triage_runs, get_triage_run
+from .repository import (
+    get_draft,
+    get_triage_run,
+    list_triage_runs,
+    mark_draft_sent,
+    record_quote_reply,
+    save_triage_run,
+)
 from .orgs import (
     DEMO_API_KEY,
     create_org,
@@ -17,6 +24,9 @@ __all__ = [
     "save_triage_run",
     "list_triage_runs",
     "get_triage_run",
+    "get_draft",
+    "mark_draft_sent",
+    "record_quote_reply",
     "DEMO_API_KEY",
     "create_org",
     "ensure_demo_org",

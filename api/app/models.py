@@ -6,7 +6,7 @@ plus loss-run summary; deep nesting goes in `extra`.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -115,11 +115,15 @@ class AppetiteMatch(BaseModel):
 
 
 class DraftedEmail(BaseModel):
+    # `id` is populated after persistence so the dashboard can hit /drafts/{id}/send.
+    # In-memory triage runs (e.g. CLI demo) leave it as None.
+    id: int | None = None
     carrier_id: str
     to: str
     subject: str
     body: str
     attachments: list[str] = Field(default_factory=list)
+    sent_at: datetime | None = None
 
 
 class TriageResult(BaseModel):

@@ -72,6 +72,31 @@ export default function Home() {
     }
   }
 
+  async function sendDraft(draftId: number) {
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/drafts/${draftId}/send`, {
+        method: "POST",
+        headers: authHeaders(apiKey),
+      });
+      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+      const updated = (await res.json()) as { id: number; sent_at: string | null };
+      // Patch the local result state so the button flips to "Sent" without a refetch.
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              drafted_emails: prev.drafted_emails.map((d) =>
+                d.id === updated.id ? { ...d, sent_at: updated.sent_at } : d,
+              ),
+            }
+          : prev,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   async function openHistoryRun(runId: number) {
     setError(null);
     try {
@@ -186,7 +211,7 @@ export default function Home() {
             <>
               <DocAiGaps result={result} />
               <Matches matches={result.matches} summary={result.summary} />
-              <DraftedEmails drafts={result.drafted_emails} />
+              <DraftedEmails drafts={result.drafted_emails} onSend={sendDraft} />
             </>
           )}
         </div>
@@ -453,36 +478,62 @@ function Matches({
   );
 }
 
-function DraftedEmails({ drafts }: { drafts: TriageResult["drafted_emails"] }) {
+function DraftedEmails({
+  drafts,
+  onSend,
+}: {
+  drafts: TriageResult["drafted_emails"];
+  onSend: (id: number) => void;
+}) {
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
         Drafted carrier emails ({drafts.length})
       </h2>
       <div className="space-y-4">
-        {drafts.map((d) => (
-          <article
-            key={d.carrier_id}
-            className="rounded-md border border-slate-800 bg-slate-950 p-4"
-          >
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-slate-400">
-              <span>To: <span className="text-slate-200">{d.to}</span></span>
-              <span>Attach: {d.attachments.join(", ")}</span>
-            </div>
-            <p className="mb-3 text-sm font-semibold text-slate-100">{d.subject}</p>
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-300">
-              {d.body}
-            </pre>
-            <div className="mt-4 flex gap-2">
-              <button className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-emerald-400">
-                Send to carrier
-              </button>
-              <button className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900">
-                Edit draft
-              </button>
-            </div>
-          </article>
-        ))}
+        {drafts.map((d) => {
+          const isSent = Boolean(d.sent_at);
+          return (
+            <article
+              key={d.carrier_id}
+              className="rounded-md border border-slate-800 bg-slate-950 p-4"
+            >
+              <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-slate-400">
+                <span>To: <span className="text-slate-200">{d.to}</span></span>
+                <span>Attach: {d.attachments.join(", ")}</span>
+                {isSent && (
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
+                    ✓ sent {new Date(d.sent_at!).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <p className="mb-3 text-sm font-semibold text-slate-100">{d.subject}</p>
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-300">
+                {d.body}
+              </pre>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => d.id && onSend(d.id)}
+                  disabled={!d.id || isSent}
+                  className={
+                    "rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed " +
+                    (isSent
+                      ? "border border-emerald-700 bg-transparent text-emerald-400"
+                      : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:opacity-50")
+                  }
+                >
+                  {isSent ? "Sent" : "Send to carrier"}
+                </button>
+                <button
+                  disabled
+                  className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900 disabled:opacity-50"
+                >
+                  Edit draft
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

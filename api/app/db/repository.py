@@ -6,6 +6,8 @@ HTTP surface and the storage layer decoupled and lets us swap engines
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -68,6 +70,42 @@ def list_triage_runs(
         .limit(limit)
     )
     return list(session.execute(stmt).scalars())
+
+
+def get_draft(
+    session: Session, draft_id: int, *, org_id: int,
+) -> DraftedEmailRow | None:
+    """Fetch a single draft, scoped to the org via its parent run."""
+    stmt = (
+        select(DraftedEmailRow)
+        .join(TriageRun, DraftedEmailRow.run_id == TriageRun.id)
+        .where(DraftedEmailRow.id == draft_id, TriageRun.org_id == org_id)
+    )
+    return session.execute(stmt).scalar_one_or_none()
+
+
+def mark_draft_sent(
+    draft: DraftedEmailRow, *, provider_message_id: str,
+) -> DraftedEmailRow:
+    """Idempotent in spirit — re-sending overwrites with the latest id."""
+    draft.sent_at = datetime.now(timezone.utc)
+    draft.provider_message_id = provider_message_id
+    return draft
+
+
+def record_quote_reply(
+    session: Session, *, provider_message_id: str, body: str,
+) -> DraftedEmailRow | None:
+    """Match an inbound webhook to the originating draft."""
+    stmt = select(DraftedEmailRow).where(
+        DraftedEmailRow.provider_message_id == provider_message_id
+    )
+    draft = session.execute(stmt).scalar_one_or_none()
+    if draft is None:
+        return None
+    draft.quote_replied_at = datetime.now(timezone.utc)
+    draft.quote_reply_body = body
+    return draft
 
 
 def get_triage_run(

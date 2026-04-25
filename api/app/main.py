@@ -18,12 +18,16 @@ from .agent import load_carriers, triage_submission
 from .auth import CurrentOrg, current_org
 from .db import (
     ensure_demo_org,
+    get_draft,
     get_triage_run,
     init_db,
     list_triage_runs,
+    mark_draft_sent,
+    record_quote_reply,
     save_triage_run,
     session_scope,
 )
+from .email import get_client as get_email_client
 from .llm import get_client
 from .models import Carrier, Submission, TriageResult
 from .parsers.base import DocAiParser
@@ -82,7 +86,12 @@ def _carriers_or_503() -> list[Carrier]:
 def _run_and_persist(submission: Submission, org_id: int) -> TriageResult:
     result = triage_submission(submission, _carriers_or_503(), llm=get_client())
     with session_scope() as session:
-        save_triage_run(session, submission, result, org_id=org_id)
+        run = save_triage_run(session, submission, result, org_id=org_id)
+        # Echo back the persisted draft ids so the dashboard can call
+        # /drafts/{id}/send without re-querying.
+        by_carrier = {d.carrier_id: d.id for d in run.drafts}
+        for d in result.drafted_emails:
+            d.id = by_carrier.get(d.carrier_id)
     return result
 
 
@@ -146,6 +155,91 @@ def history(
         ]
 
 
+class DraftStatus(BaseModel):
+    id: int
+    carrier_id: str
+    to: str
+    subject: str
+    body: str
+    attachments: list[str]
+    sent_at: datetime | None
+    provider_message_id: str | None
+    quote_replied_at: datetime | None
+    quote_reply_body: str | None
+
+
+def _draft_to_status(draft) -> DraftStatus:
+    return DraftStatus(
+        id=draft.id,
+        carrier_id=draft.carrier_id,
+        to=draft.to,
+        subject=draft.subject,
+        body=draft.body,
+        attachments=list(draft.attachments),
+        sent_at=draft.sent_at,
+        provider_message_id=draft.provider_message_id,
+        quote_replied_at=draft.quote_replied_at,
+        quote_reply_body=draft.quote_reply_body,
+    )
+
+
+@app.post("/drafts/{draft_id}/send", response_model=DraftStatus)
+def send_draft(
+    draft_id: int, org: CurrentOrg = Depends(current_org),
+) -> DraftStatus:
+    """Send a drafted carrier email via the configured email provider.
+
+    With SES_FROM_ADDRESS set this hits AWS SES. Otherwise it lands in
+    the in-memory stub outbox so local dev works end-to-end.
+    """
+    with session_scope() as session:
+        draft = get_draft(session, draft_id, org_id=org.id)
+        if draft is None:
+            raise HTTPException(404, detail=f"Draft {draft_id} not found")
+        client = get_email_client()
+        sent = client.send(to=draft.to, subject=draft.subject, body=draft.body)
+        mark_draft_sent(draft, provider_message_id=sent.provider_message_id)
+        return _draft_to_status(draft)
+
+
+@app.get("/drafts/{draft_id}", response_model=DraftStatus)
+def get_draft_status(
+    draft_id: int, org: CurrentOrg = Depends(current_org),
+) -> DraftStatus:
+    with session_scope() as session:
+        draft = get_draft(session, draft_id, org_id=org.id)
+        if draft is None:
+            raise HTTPException(404, detail=f"Draft {draft_id} not found")
+        return _draft_to_status(draft)
+
+
+class InboundReply(BaseModel):
+    """Webhook payload for inbound quote replies.
+
+    Postmark-style; SES Inbound's SNS payload is converted to this shape
+    by an upstream Lambda we'll add in iter 8 once SES Inbound is live.
+    """
+    provider_message_id: str
+    body: str
+
+
+@app.post("/webhooks/inbound", response_model=DraftStatus | None)
+def inbound_reply(payload: InboundReply) -> DraftStatus | None:
+    """Match an inbound reply to the originating draft and record it.
+
+    Public endpoint (no auth) because email providers can't carry an API
+    key — we match on the provider_message_id we generated when sending.
+    Replies that don't match a draft are silently dropped (returns null).
+    """
+    with session_scope() as session:
+        draft = record_quote_reply(
+            session,
+            provider_message_id=payload.provider_message_id,
+            body=payload.body,
+        )
+        return _draft_to_status(draft) if draft else None
+
+
 @app.get("/history/{run_id}", response_model=TriageRunDetail)
 def history_detail(
     run_id: int, org: CurrentOrg = Depends(current_org),
@@ -171,11 +265,13 @@ def history_detail(
             ],
             drafted_emails=[
                 {
+                    "id": d.id,
                     "carrier_id": d.carrier_id,
                     "to": d.to,
                     "subject": d.subject,
                     "body": d.body,
                     "attachments": d.attachments,
+                    "sent_at": d.sent_at,
                 }
                 for d in run.drafts
             ],
