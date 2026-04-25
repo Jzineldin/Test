@@ -18,9 +18,11 @@ function Header() {
     <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
       <div className="flex items-baseline gap-2">
         <span className="text-lg font-semibold tracking-tight text-slate-100">
-          Submission Triage
+          AppetiteMatch
         </span>
-        <span className="text-xs uppercase tracking-widest text-slate-500">v0</span>
+        <span className="text-xs uppercase tracking-widest text-slate-500">
+          beta
+        </span>
       </div>
       <nav className="flex items-center gap-6 text-sm">
         <Link href="#how" className="text-slate-400 hover:text-slate-100">
@@ -284,8 +286,8 @@ function Footer() {
   return (
     <footer className="border-t border-slate-800">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-slate-500">
-        <span>© 2026 Submission Triage</span>
-        <span>Built on Claude · GCP Document AI · AWS · Stripe</span>
+        <span>© 2026 AppetiteMatch</span>
+        <span>Built on Claude · Document AI · AWS · Stripe</span>
       </div>
     </footer>
   );
