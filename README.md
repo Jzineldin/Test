@@ -88,6 +88,29 @@ cd web && npm install && npm run dev   # http://localhost:3000
 cd api && .venv/bin/pytest
 ```
 
+## ACORD PDF ingestion (GCP Document AI)
+
+The agent accepts ACORD PDFs via `POST /triage/upload`. To enable real
+parsing in any environment:
+
+1. Enable the **Document AI API** in your GCP project.
+2. Create a **Form Parser** processor (or train a custom ACORD extractor).
+3. Set environment variables before launching the API:
+   ```
+   GCP_PROJECT_ID=your-project
+   DOCAI_PROCESSOR_ID=abc123
+   DOCAI_LOCATION=us            # or eu
+   GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json
+   ```
+
+Without these vars, the upload endpoint returns 503 with a clear message.
+Tests inject a `FakeDocAiClient`, so the suite never calls GCP.
+
+The field mapper (`api/app/parsers/field_map.py`) handles common ACORD
+label variants and currency/integer/state parsing. Anything it can't map
+goes into `extra.docai_raw`, and missing required fields are surfaced in
+`extra.docai_gaps` for the dashboard to prompt on.
+
 ## Layout
 
 ```
