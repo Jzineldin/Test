@@ -361,8 +361,22 @@ export default function Home() {
           )}
 
           {!result && !error && (
-            <div className="flex h-full min-h-[480px] items-center justify-center rounded-md border border-dashed border-slate-800 text-sm text-slate-500">
-              Run triage to see appetite matches and drafted emails.
+            <div className="flex h-full min-h-[480px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-slate-800 px-8 text-center text-sm text-slate-500">
+              <p className="text-slate-300">First time? Try a sample.</p>
+              <ol className="space-y-1 text-xs leading-relaxed text-slate-500">
+                <li>
+                  1. Click <span className="text-slate-300">Paste JSON</span> ·
+                  then <span className="text-slate-300">Reset to sample</span>
+                </li>
+                <li>
+                  2. Hit <span className="text-slate-300">Run triage</span> —
+                  Acme Plumbing, TX gets scored against 4 carriers
+                </li>
+                <li>3. Review matches → click "Send" on the top draft</li>
+              </ol>
+              <p className="text-xs text-slate-600">
+                Or drop a real ACORD PDF on the left to use yours.
+              </p>
             </div>
           )}
 

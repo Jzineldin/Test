@@ -287,7 +287,20 @@ function Footer() {
     <footer className="border-t border-slate-800">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-slate-500">
         <span>© 2026 AppetiteMatch</span>
-        <span>Built on Claude · Document AI · AWS · Stripe</span>
+        <div className="flex gap-5">
+          <Link href="/privacy" className="hover:text-slate-300">
+            Privacy
+          </Link>
+          <Link href="/terms" className="hover:text-slate-300">
+            Terms
+          </Link>
+          <a
+            href="mailto:hello@appetitematch.com"
+            className="hover:text-slate-300"
+          >
+            Contact
+          </a>
+        </div>
       </div>
     </footer>
   );
