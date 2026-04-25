@@ -900,7 +900,9 @@ def billing_checkout_link(
         # Refresh the row so we can persist the stripe customer id.
         from .db.models import Org as OrgRow
         row = session.get(OrgRow, org.id)
-        if row.stripe_customer_id is None:
+        # A previously-saved stub id (cus_stub_*) means the org was
+        # provisioned before real Stripe was wired up. Recreate it.
+        if row.stripe_customer_id is None or row.stripe_customer_id.startswith("cus_stub_"):
             row.stripe_customer_id = client.ensure_customer(
                 org_id=row.id, name=row.name, slug=row.slug,
             )
