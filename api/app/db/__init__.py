@@ -17,6 +17,7 @@ from .orgs import (
     generate_api_key,
     get_org_by_api_key,
     get_org_by_slug,
+    slugify_org_name,
 )
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "generate_api_key",
     "get_org_by_api_key",
     "get_org_by_slug",
+    "slugify_org_name",
 ]

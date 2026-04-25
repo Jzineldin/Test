@@ -159,6 +159,69 @@ def test_logout_clears_cookie_and_revokes_session(client):
     assert r.status_code == 401
 
 
+def test_signup_creates_org_and_admin_user(client):
+    r = client.post("/auth/signup", json={
+        "email": "founder@acmebrokers.com",
+        "name": "Jane Founder",
+        "company_name": "Acme Brokers, LLC",
+    })
+    assert r.status_code == 204
+
+    import app.db as db_pkg
+    from app.db.models import Org, User
+    from sqlalchemy import select
+    with db_pkg.session_scope() as session:
+        user = session.execute(
+            select(User).where(User.email == "founder@acmebrokers.com")
+        ).scalar_one()
+        assert user.role == "admin"
+        assert user.name == "Jane Founder"
+        org = session.get(Org, user.org_id)
+        assert org.slug == "acme-brokers-llc"
+        assert org.name == "Acme Brokers, LLC"
+
+    from app.email import get_client
+    assert get_client().outbox[-1].to == "founder@acmebrokers.com"
+
+
+def test_signup_with_duplicate_email_does_not_create_duplicate_org(client):
+    """Signing up twice with the same email is idempotent — just sends a
+    fresh login link to the original org instead of creating a clone."""
+    body = {"email": "x@y.com", "name": "X", "company_name": "Y Co"}
+    assert client.post("/auth/signup", json=body).status_code == 204
+    assert client.post("/auth/signup", json={**body, "company_name": "Z Co"}).status_code == 204
+
+    import app.db as db_pkg
+    from app.db.models import Org, User
+    from sqlalchemy import select
+    with db_pkg.session_scope() as session:
+        users = session.execute(
+            select(User).where(User.email == "x@y.com")
+        ).scalars().all()
+        assert len(users) == 1
+        # Only the first org made it.
+        orgs = session.execute(select(Org).where(Org.slug.like("%-co%"))).scalars().all()
+        assert len(orgs) == 1
+        assert orgs[0].name == "Y Co"
+
+
+def test_signup_with_colliding_company_name_appends_suffix(client):
+    a = {"email": "a@a.com", "name": "A", "company_name": "Acme"}
+    b = {"email": "b@b.com", "name": "B", "company_name": "Acme"}
+    assert client.post("/auth/signup", json=a).status_code == 204
+    assert client.post("/auth/signup", json=b).status_code == 204
+
+    import app.db as db_pkg
+    from app.db.models import Org
+    from sqlalchemy import select
+    with db_pkg.session_scope() as session:
+        slugs = sorted([
+            o.slug for o in session.execute(select(Org)).scalars().all()
+            if o.slug != "demo"
+        ])
+        assert slugs == ["acme", "acme-2"]
+
+
 def test_session_cookie_and_api_key_both_work(client):
     """Bearer key (existing) and session cookie (new) both resolve to org."""
     by_key = client.get("/me", headers={

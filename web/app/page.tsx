@@ -29,11 +29,14 @@ function Header() {
         <Link href="#pricing" className="text-slate-400 hover:text-slate-100">
           Pricing
         </Link>
+        <Link href="/login" className="text-slate-400 hover:text-slate-100">
+          Sign in
+        </Link>
         <Link
-          href="/app"
+          href="/signup"
           className="rounded-md bg-emerald-500 px-4 py-2 text-xs font-medium text-slate-950 hover:bg-emerald-400"
         >
-          Open the demo →
+          Start free trial →
         </Link>
       </nav>
     </header>
@@ -60,17 +63,17 @@ function Hero() {
       </p>
       <div className="mt-10 flex flex-wrap items-center gap-4">
         <Link
-          href="/app"
+          href="/signup"
           className="rounded-md bg-emerald-500 px-5 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-400"
         >
-          Try the live demo
+          Start free trial
         </Link>
-        <a
-          href="mailto:hello@example.com"
+        <Link
+          href="/app"
           className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 hover:bg-slate-900"
         >
-          Talk to a human
-        </a>
+          Try the live demo →
+        </Link>
       </div>
     </section>
   );
@@ -211,7 +214,7 @@ function Pricing() {
                 ))}
               </ul>
               <Link
-                href="/app"
+                href={p.href}
                 className={
                   "mt-6 inline-block rounded-md px-4 py-2 text-sm font-medium " +
                   (p.highlight
@@ -241,21 +244,23 @@ const PLANS = [
       "Drafted carrier emails",
       "Run history",
     ],
-    cta: "Open the demo",
+    cta: "Start free trial",
+    href: "/signup",
     highlight: false,
   },
   {
-    name: "Production",
-    price: "$2,500",
+    name: "Pro",
+    price: "$499",
     cadence: " /month",
-    target: "Up to 500 submissions, then $5 each",
+    target: "Unlimited submissions, full team",
     features: [
       "Everything in Trial",
-      "AWS SES outbound + reply tracking",
-      "Stripe-backed seat billing",
+      "Real outbound email + reply tracking",
       "Slack alerts on quote-backs",
+      "Audit log + run history",
     ],
-    cta: "Start checkout",
+    cta: "Start free trial",
+    href: "/signup",
     highlight: true,
   },
   {
@@ -270,6 +275,7 @@ const PLANS = [
       "On-site training for CSR team",
     ],
     cta: "Talk to a human",
+    href: "mailto:kevin.elzarka@gmail.com",
     highlight: false,
   },
 ];

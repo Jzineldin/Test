@@ -26,6 +26,7 @@ from .auth import CurrentOrg, current_org
 from .billing import current_period_usage, get_client as get_billing_client
 from .limits import limiter
 from .db import (
+    create_org,
     ensure_demo_org,
     get_draft,
     get_triage_run,
@@ -38,7 +39,9 @@ from .db import (
     save_triage_run,
     session_scope,
     set_draft_outcome,
+    slugify_org_name,
 )
+from .db.models import User as UserRow
 from .email import get_client as get_email_client
 from .llm import get_client
 from .logging import configure_logging
@@ -104,6 +107,56 @@ def healthz() -> dict[str, str]:
 
 
 # ---- Magic-link auth -------------------------------------------------------
+
+class SignupRequest(BaseModel):
+    email: str
+    name: str
+    company_name: str
+
+
+@app.post("/auth/signup", status_code=204)
+def auth_signup(body: SignupRequest) -> None:
+    """Create a new Org + admin User, then mail a magic-link.
+
+    Idempotent on email: if the address is already registered we just
+    send a login link to the existing user, so users who hit signup
+    twice don't end up with duplicate orgs.
+    """
+    email = body.email.strip().lower()
+    with session_scope() as session:
+        existing = get_user_by_email(session, email)
+        if existing is None:
+            slug = slugify_org_name(session, body.company_name)
+            org = create_org(session, name=body.company_name.strip(), slug=slug)
+            user = UserRow(
+                org_id=org.id,
+                email=email,
+                name=body.name.strip() or None,
+                role="admin",
+            )
+            session.add(user)
+            session.flush()
+        else:
+            user = existing
+        token = issue_magic_link(session, user)
+        user_email = user.email
+        user_name = user.name
+
+    base = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+    link = f"{base}/login/verify?token={token}"
+    email_client = get_email_client()
+    email_client.send(
+        to=user_email,
+        subject="Welcome to AppetiteMatch — confirm your email",
+        body=(
+            f"Hi {user_name or user_email.split('@')[0]},\n\n"
+            f"Click below to finish setting up your account. Link expires in 15 minutes.\n\n"
+            f"{link}\n\n"
+            "If you didn't request this, ignore the email.\n"
+        ),
+    )
+    return None
+
 
 class LoginRequest(BaseModel):
     email: str

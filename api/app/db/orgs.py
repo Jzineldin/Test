@@ -1,6 +1,7 @@
 """Org provisioning + lookup."""
 from __future__ import annotations
 
+import re
 import secrets
 
 from sqlalchemy import select
@@ -33,6 +34,18 @@ def get_org_by_slug(session: Session, slug: str) -> Org | None:
     return session.execute(
         select(Org).where(Org.slug == slug)
     ).scalar_one_or_none()
+
+
+def slugify_org_name(session: Session, name: str) -> str:
+    """Turn "Acme Brokers, LLC" into "acme-brokers-llc". Suffixes "-2", "-3"
+    on collision so signups never fail on a duplicate company name."""
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:48] or "broker"
+    candidate = base
+    n = 2
+    while get_org_by_slug(session, candidate) is not None:
+        candidate = f"{base}-{n}"
+        n += 1
+    return candidate
 
 
 def create_org(
