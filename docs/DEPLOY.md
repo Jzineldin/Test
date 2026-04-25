@@ -1,149 +1,146 @@
-# Deploy guide
+# Deploy: Render (backend) + Vercel (dashboard)
 
-End-to-end production deploy: API on AWS Lambda + RDS Postgres, dashboard on
-Vercel. Should take under an hour the first time.
+End-to-end "you can give the URL to a broker" deploy. ~20 minutes, all
+clicks, free tier on both providers (no credit card to start).
 
-## Prereqs
+## TL;DR — two buttons
 
-| Tool | Why |
-|------|-----|
-| AWS CLI v2 (configured) | Lambda + RDS + SES |
-| AWS SAM CLI | Build + deploy the API |
-| Vercel CLI | Deploy the dashboard |
-| Node 20+, Python 3.11+ | Local builds |
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Jzineldin/Test)
+&nbsp;&nbsp;
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJzineldin%2FTest&root-directory=web&env=NEXT_PUBLIC_API_URL&envDescription=Render%20API%20URL%20from%20step%201)
 
-## 1. Postgres (RDS or Neon)
+**Click Render first. Wait for it to be live. Copy the .onrender.com URL.
+Then click Vercel and paste that URL when prompted.**
 
-Cheapest path for v0: Neon free tier — give it 5 minutes.
-1. https://neon.tech → new project → copy the connection string
-2. Convert it to SQLAlchemy form: replace `postgresql://` with `postgresql+psycopg://`
-3. Save as `DATABASE_URL`. You'll paste it into SAM in step 4.
+---
 
-If you want RDS instead: t4g.micro Postgres in a public VPC subnet, db parameter
-group with `rds.force_ssl=1`, security group allowing `0.0.0.0/0` on 5432
-(tighten later).
+## Part 1 — Backend on Render (~10 min)
 
-## 2. SES (sender verification)
+### 1. Click the Render button above
+Sign in with GitHub the first time. Render reads `render.yaml` at the
+repo root and shows you what it's about to create:
 
-```bash
-aws ses verify-email-identity --email-address you@yourdomain.com
-# OR for a whole domain (recommended):
-aws ses verify-domain-identity --domain yourdomain.com
-# Print the DKIM CNAMEs to add at your registrar:
-aws ses get-identity-dkim-attributes --identities yourdomain.com
+- A **web service** named `submission-triage-api`
+- A **Postgres database** named `triage-db`
+
+When asked for the branch, pick `claude/ai-agent-venture-builder-taoWC`
+(or `main` if you've already merged PR #2). Click **Apply**.
+
+### 2. Wait ~3 minutes
+Render does in parallel:
+- Postgres provisioning
+- pip install
+- `alembic upgrade head` (creates the schema)
+- `uvicorn app.main:app` start
+
+When the web service shows **Live** with a green dot, **copy its URL**.
+It looks like `https://submission-triage-api.onrender.com`.
+
+### 3. Smoke test
+Open `https://YOUR-URL.onrender.com/healthz` in a browser. Expect:
+
+```json
+{"status": "ok"}
 ```
 
-New AWS accounts are sandboxed — you can only send to verified addresses
-until you request production access. Do that in the SES console once
-the demo is working.
+### 4. Add your AWS keys
+Render dashboard → your web service → **Environment** tab → add:
 
-## 3. GCP Document AI (real ACORD ingestion)
+| Key | Value |
+|-----|-------|
+| `AWS_ACCESS_KEY_ID` | (your real key) |
+| `AWS_SECRET_ACCESS_KEY` | (your real secret) |
 
-```bash
-gcloud auth application-default login
-gcloud services enable documentai.googleapis.com --project=YOUR_PROJECT
-# Create a Form Parser processor:
-gcloud documentai processors create \
-  --location=us \
-  --type=FORM_PARSER_PROCESSOR \
-  --display-name=acord-form-parser \
-  --project=YOUR_PROJECT
+Render restarts automatically when you save. After ~30 s the API will
+have real Bedrock access.
+
+---
+
+## Part 2 — Dashboard on Vercel (~5 min)
+
+### 1. Click the Vercel button above
+Sign in with GitHub. Vercel auto-detects Next.js. Two things matter on
+the import screen:
+
+- **Root Directory:** `web` (the button URL pre-fills this)
+- **Environment Variables:** add `NEXT_PUBLIC_API_URL` and paste the
+  Render URL from Part 1 step 2 (e.g. `https://submission-triage-api.onrender.com`)
+
+Click **Deploy**. ~2 min build.
+
+### 2. Open your dashboard
+Vercel hands you a URL like `https://test-xyz.vercel.app`. Open it.
+
+You'll see the marketing landing page. Click **Try the live demo →**
+to land on `/app`.
+
+### 3. Wire CORS so the dashboard can call the API
+Render → your web service → **Environment** → edit `CORS_ORIGINS` to
+your Vercel URL:
+
+```
+https://test-xyz.vercel.app
 ```
 
-Note the returned processor id (the part after `processors/`).
+(Replace `*` with the actual URL.) Render restarts.
 
-For ACORD-specific accuracy, swap to a **Custom Extractor** trained on
-30–50 labeled ACORDs — same env vars, just a different processor id.
+### 4. Click "Run triage"
+You should now see:
+- 3 carriers scored (real Claude responses)
+- 2–3 drafted emails (each different per carrier)
+- The history panel populating
+- The billing badge showing `trial · 1/50`
 
-## 4. Stripe
+**That's the full product running on public URLs.** Send the dashboard
+URL to a broker.
 
-1. https://dashboard.stripe.com → API keys → copy **Secret key**
-2. Products → create one (e.g. "Submission Triage Production") → add a
-   recurring **Price** ($2,500/mo). Copy the price id (`price_...`)
-3. Webhooks → Add endpoint → URL is the Lambda function URL + `/webhooks/stripe`
-   → events: `checkout.session.completed`, `customer.subscription.deleted`
-   → copy the **signing secret**
+---
 
-You'll paste the secret + signing secret into SAM in the next step.
+## What's still off after Part 2
 
-## 5. Deploy the API to Lambda
+Three subsystems are still on stubs even after the deploy:
 
-```bash
-cd infra/lambda
-sam build
-sam deploy --guided
-# Provide:
-#   Stack name           : submission-triage
-#   Region               : us-east-1
-#   StageName            : prod
-#   CorsOrigins          : https://your-dashboard.vercel.app
-#   BedrockModelId       : us.anthropic.claude-sonnet-4-6
-#   GcpProjectId         : your-gcp-project
-#   DocaiProcessorId     : <from step 3>
-#   SesFromAddress       : noreply@yourdomain.com
-#   StripeSecretKey      : sk_live_...
-#   StripeWebhookSecret  : whsec_...
-#   DatabaseUrl          : postgresql+psycopg://...
-```
+| Subsystem | What turns it on |
+|-----------|------------------|
+| ACORD PDF parsing | `GCP_PROJECT_ID` + `DOCAI_PROCESSOR_ID` env vars on Render |
+| Real outbound email | `SES_FROM_ADDRESS` (after a verified sender domain) |
+| Real Stripe checkout | `STRIPE_SECRET_KEY` + a live Price |
 
-Save the printed **ApiUrl** — that's your API base.
+Each is its own ~30-min "create the account, paste the keys, restart"
+loop. Same shape as Part 1 — set env vars in Render's dashboard.
 
-Subsequent deploys: just `sam deploy` (parameters cached in samconfig.toml).
-
-## 6. Deploy the dashboard to Vercel
-
-```bash
-cd web
-vercel link            # first time only
-vercel env add NEXT_PUBLIC_API_URL production
-# Paste the ApiUrl from step 5
-vercel --prod
-```
-
-The dashboard now hits your real API.
-
-## 7. Smoke test
-
-```bash
-# Health
-curl https://YOUR_API/healthz
-
-# Auth check (use the demo key the seed creates on first boot)
-curl https://YOUR_API/me -H "Authorization: Bearer demo-key-change-in-prod"
-
-# Triage with the sample submission
-curl https://YOUR_API/triage \
-  -H "Authorization: Bearer demo-key-change-in-prod" \
-  -H "Content-Type: application/json" \
-  --data @../data/submissions/acme_plumbing.json | jq .
-```
-
-## 8. Rotate the demo key
-
-The bootstrap key (`demo-key-change-in-prod`) is meant for first-touch only.
-Generate a new one and update the Org row:
-
-```bash
-python -c 'from app.db.orgs import generate_api_key; print(generate_api_key())'
-# Paste the result and update the row directly in psql:
-#   UPDATE orgs SET api_key = '<new key>' WHERE slug = 'demo';
-```
-
-## 9. Custom domain
-
-- Dashboard: Vercel → Project → Domains → add `app.yourdomain.com`
-- API: Lambda URLs aren't pretty. Either keep them, or front the function
-  with API Gateway + a custom domain (CNAME `api.yourdomain.com`).
+---
 
 ## Cost expectations
 
-| Item | Estimate |
-|------|----------|
-| Lambda (per submission, ~100k req/mo) | ~$5/mo |
-| Bedrock Sonnet 4.6 (~$0.04/submission) | $40/1k submissions |
-| RDS t4g.micro Postgres | ~$15/mo (or free on Neon) |
-| SES | $0.10 per 1k sent |
-| Vercel Hobby | $0 |
+- **Render** free tier: $0. Web service sleeps after 15 min idle (cold
+  start ~30 s on next request). Postgres free for 90 days then $7/mo.
+- **Vercel** free tier: $0. Hobby plan limits are generous.
+- **Bedrock**: per-token. Sonnet 4.6 is ~$0.04/triage on the Acme
+  sample. Your $15k AWS credits cover ~375k triages.
 
-Burn rate at 1,000 submissions/month is ~$60/mo. Your $15k AWS credits absorb
-years of operation at that scale.
+If your free Postgres expires before you have a paying customer, swap
+`DATABASE_URL` in Render's Environment tab to point at a Neon free-tier
+DB. `alembic upgrade head` rebuilds the schema on first boot of the new DB.
+
+---
+
+## Troubleshooting
+
+**Render build fails on `pip install psycopg2-binary`** — Render's
+Python 3.11 image has the postgres dev headers. If you see a libpq
+error, switch to Render's Python 3.11 runtime explicitly via
+`PYTHON_VERSION=3.11` (already in `render.yaml`).
+
+**Triage returns 500 with `UnrecognizedClientException`** — your AWS
+keys in Render's Environment tab are wrong. Open Render → Environment,
+click the eye icon next to `AWS_ACCESS_KEY_ID`, verify it matches what
+your local `aws sts get-caller-identity` returns.
+
+**Dashboard shows `CORS error`** — `CORS_ORIGINS` on Render still
+contains `*` or doesn't include your Vercel URL. Edit it, save, wait
+30 s for restart.
+
+**"Triage" button does nothing** — the dashboard's `NEXT_PUBLIC_API_URL`
+isn't set on Vercel. Vercel → Project → Settings → Environment Variables
+→ add it → redeploy.

@@ -5,8 +5,16 @@ that ingests submissions from retail agents (ACORD PDFs or normalized JSON),
 matches risks to carrier appetite, drafts carrier-ready submission emails,
 sends them via SES, and tracks quote-back replies.
 
-**Status:** v0.2 — multi-tenant, billing-aware, end-to-end runnable locally
-without any cloud credentials.
+## One-click deploy
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Jzineldin/Test)
+&nbsp;&nbsp;
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJzineldin%2FTest&root-directory=web&env=NEXT_PUBLIC_API_URL&envDescription=Render%20API%20URL%20from%20step%201)
+
+**Click Render first** (deploys the FastAPI backend + Postgres). When that's
+live, copy the `.onrender.com` URL and **click Vercel** — it'll prompt you for
+`NEXT_PUBLIC_API_URL`, paste the Render URL there. Full step-by-step in
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Why this exists
 
