@@ -1,12 +1,7 @@
 """FastAPI app — HTTP surface for the triage agent.
 
-Endpoints:
-    POST /triage              — run triage on a normalized Submission JSON body
-    POST /triage/upload       — upload an ACORD PDF, parse via DocAI, then triage
-    GET  /carriers            — list loaded carrier appetite guides
-    GET  /history             — recent triage runs (most recent first)
-    GET  /history/{run_id}    — single triage run with matches + drafts
-    GET  /healthz             — liveness
+Auth: every triage/history endpoint requires `Authorization: Bearer <key>`.
+The demo seed creates one Org with a well-known key (see /me to fetch it).
 """
 from __future__ import annotations
 
@@ -15,12 +10,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .agent import load_carriers, triage_submission
+from .auth import CurrentOrg, current_org
 from .db import (
+    ensure_demo_org,
     get_triage_run,
     init_db,
     list_triage_runs,
@@ -36,7 +33,7 @@ CARRIERS_DIR = Path(os.environ.get(
     Path(__file__).resolve().parents[2] / "data" / "carriers",
 ))
 
-app = FastAPI(title="Submission Triage Agent", version="0.1.0")
+app = FastAPI(title="Submission Triage Agent", version="0.2.0")
 
 _cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
@@ -50,6 +47,8 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    with session_scope() as session:
+        ensure_demo_org(session)
 
 
 @app.get("/healthz")
@@ -57,8 +56,19 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/me")
+def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
+    return {
+        "org_id": org.id,
+        "org_name": org.name,
+        "slug": org.slug,
+        "plan": org.plan,
+        "monthly_submission_quota": org.monthly_submission_quota,
+    }
+
+
 @app.get("/carriers", response_model=list[Carrier])
-def list_carriers() -> list[Carrier]:
+def list_carriers(_: CurrentOrg = Depends(current_org)) -> list[Carrier]:
     return load_carriers(CARRIERS_DIR)
 
 
@@ -69,20 +79,25 @@ def _carriers_or_503() -> list[Carrier]:
     return carriers
 
 
-def _run_and_persist(submission: Submission) -> TriageResult:
+def _run_and_persist(submission: Submission, org_id: int) -> TriageResult:
     result = triage_submission(submission, _carriers_or_503(), llm=get_client())
     with session_scope() as session:
-        save_triage_run(session, submission, result)
+        save_triage_run(session, submission, result, org_id=org_id)
     return result
 
 
 @app.post("/triage", response_model=TriageResult)
-def triage(submission: Submission) -> TriageResult:
-    return _run_and_persist(submission)
+def triage(
+    submission: Submission, org: CurrentOrg = Depends(current_org),
+) -> TriageResult:
+    return _run_and_persist(submission, org_id=org.id)
 
 
 @app.post("/triage/upload", response_model=TriageResult)
-async def triage_upload(file: UploadFile = File(...)) -> TriageResult:
+async def triage_upload(
+    file: UploadFile = File(...),
+    org: CurrentOrg = Depends(current_org),
+) -> TriageResult:
     if file.content_type not in {"application/pdf", "application/octet-stream"}:
         raise HTTPException(415, detail=f"Unsupported content type: {file.content_type}")
     pdf_bytes = await file.read()
@@ -90,7 +105,7 @@ async def triage_upload(file: UploadFile = File(...)) -> TriageResult:
         submission = DocAiParser().parse_bytes(pdf_bytes)
     except RuntimeError as e:
         raise HTTPException(503, detail=str(e)) from e
-    return _run_and_persist(submission)
+    return _run_and_persist(submission, org_id=org.id)
 
 
 # ---- History ---------------------------------------------------------------
@@ -112,9 +127,11 @@ class TriageRunDetail(TriageRunSummary):
 
 
 @app.get("/history", response_model=list[TriageRunSummary])
-def history(limit: int = 50) -> list[TriageRunSummary]:
+def history(
+    limit: int = 50, org: CurrentOrg = Depends(current_org),
+) -> list[TriageRunSummary]:
     with session_scope() as session:
-        runs = list_triage_runs(session, limit=limit)
+        runs = list_triage_runs(session, org_id=org.id, limit=limit)
         return [
             TriageRunSummary(
                 id=r.id,
@@ -130,9 +147,11 @@ def history(limit: int = 50) -> list[TriageRunSummary]:
 
 
 @app.get("/history/{run_id}", response_model=TriageRunDetail)
-def history_detail(run_id: int) -> TriageRunDetail:
+def history_detail(
+    run_id: int, org: CurrentOrg = Depends(current_org),
+) -> TriageRunDetail:
     with session_scope() as session:
-        run = get_triage_run(session, run_id)
+        run = get_triage_run(session, run_id, org_id=org.id)
         if run is None:
             raise HTTPException(404, detail=f"Triage run {run_id} not found")
         result = TriageResult(

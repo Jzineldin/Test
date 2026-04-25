@@ -14,10 +14,15 @@ from .models import AppetiteMatchRow, DraftedEmailRow, TriageRun
 
 
 def save_triage_run(
-    session: Session, submission: Submission, result: TriageResult,
+    session: Session,
+    submission: Submission,
+    result: TriageResult,
+    *,
+    org_id: int,
 ) -> TriageRun:
     """Persist a triage run with its matches + drafts. Returns the row."""
     run = TriageRun(
+        org_id=org_id,
         submission_id=result.submission_id,
         insured_name=submission.insured.legal_name,
         primary_state=submission.insured.primary_state,
@@ -51,22 +56,28 @@ def save_triage_run(
     return run
 
 
-def list_triage_runs(session: Session, *, limit: int = 50) -> list[TriageRun]:
-    """Most recent first."""
+def list_triage_runs(
+    session: Session, *, org_id: int, limit: int = 50,
+) -> list[TriageRun]:
+    """Most recent first, scoped to org."""
     # id DESC breaks ties when two runs land in the same DB clock tick.
     stmt = (
         select(TriageRun)
+        .where(TriageRun.org_id == org_id)
         .order_by(TriageRun.created_at.desc(), TriageRun.id.desc())
         .limit(limit)
     )
     return list(session.execute(stmt).scalars())
 
 
-def get_triage_run(session: Session, run_id: int) -> TriageRun | None:
-    """Single run with matches + drafts eager-loaded."""
+def get_triage_run(
+    session: Session, run_id: int, *, org_id: int,
+) -> TriageRun | None:
+    """Single run with matches + drafts eager-loaded. Returns None if the
+    run doesn't exist OR belongs to a different org (no info leak)."""
     stmt = (
         select(TriageRun)
-        .where(TriageRun.id == run_id)
+        .where(TriageRun.id == run_id, TriageRun.org_id == org_id)
         .options(selectinload(TriageRun.matches), selectinload(TriageRun.drafts))
     )
     return session.execute(stmt).scalar_one_or_none()

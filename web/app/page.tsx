@@ -9,7 +9,13 @@ import type {
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_KEY_STORAGE = "submission-triage-api-key";
+const DEFAULT_DEMO_KEY = "demo-key-change-in-prod";
 type Mode = "pdf" | "json";
+
+function authHeaders(apiKey: string): HeadersInit {
+  return { Authorization: `Bearer ${apiKey}` };
+}
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("pdf");
@@ -21,15 +27,30 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<TriageRunSummary[]>([]);
+  const [apiKey, setApiKey] = useState<string>("");
+
+  // Hydrate API key from localStorage; default to demo key on first visit.
+  useEffect(() => {
+    const stored = localStorage.getItem(API_KEY_STORAGE);
+    setApiKey(stored ?? DEFAULT_DEMO_KEY);
+  }, []);
+
+  function persistKey(key: string) {
+    setApiKey(key);
+    localStorage.setItem(API_KEY_STORAGE, key);
+  }
 
   const loadHistory = useCallback(async () => {
+    if (!apiKey) return;
     try {
-      const res = await fetch(`${API_URL}/history?limit=20`);
+      const res = await fetch(`${API_URL}/history?limit=20`, {
+        headers: authHeaders(apiKey),
+      });
       if (res.ok) setHistory((await res.json()) as TriageRunSummary[]);
     } catch {
       /* history is best-effort; ignore failures */
     }
-  }, []);
+  }, [apiKey]);
 
   useEffect(() => {
     loadHistory();
@@ -54,7 +75,9 @@ export default function Home() {
   async function openHistoryRun(runId: number) {
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/history/${runId}`);
+      const res = await fetch(`${API_URL}/history/${runId}`, {
+        headers: authHeaders(apiKey),
+      });
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       const detail = (await res.json()) as TriageRunDetail;
       setResult(detail.result);
@@ -69,28 +92,32 @@ export default function Home() {
     if (!pdfFile) throw new Error("Drop or pick an ACORD PDF first.");
     const form = new FormData();
     form.append("file", pdfFile);
-    return fetch(`${API_URL}/triage/upload`, { method: "POST", body: form });
+    return fetch(`${API_URL}/triage/upload`, {
+      method: "POST",
+      headers: authHeaders(apiKey),
+      body: form,
+    });
   }
 
   async function postJson(): Promise<Response> {
     const parsed = JSON.parse(submissionJson);
     return fetch(`${API_URL}/triage`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify(parsed),
     });
   }
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
-      <header className="mb-10 flex items-baseline justify-between border-b border-slate-800 pb-6">
+      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Submission Triage</h1>
           <p className="mt-1 text-sm text-slate-400">
             Wholesale broker workflow — ACORD in, carrier-ready submissions out.
           </p>
         </div>
-        <span className="text-xs uppercase tracking-widest text-slate-500">v0 demo</span>
+        <ApiKeyInput value={apiKey} onChange={persistKey} />
       </header>
 
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
@@ -225,6 +252,28 @@ function History({
         </table>
       </div>
     </section>
+  );
+}
+
+function ApiKeyInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-xs text-slate-400">
+      <span className="uppercase tracking-widest">API key</span>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        spellCheck={false}
+        placeholder={DEFAULT_DEMO_KEY}
+        className="w-56 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 font-mono text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+      />
+    </label>
   );
 }
 

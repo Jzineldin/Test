@@ -26,10 +26,35 @@ class Base(DeclarativeBase):
     pass
 
 
+class Org(Base):
+    """A wholesale broker / MGA — the unit of tenancy.
+
+    Every TriageRun belongs to exactly one Org. Authentication is by API
+    key today (one Bearer token per Org); user-level identity comes later.
+    """
+    __tablename__ = "orgs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(256))
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    api_key: Mapped[str] = mapped_column(String(96), unique=True, index=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    plan: Mapped[str] = mapped_column(String(32), default="trial")
+    monthly_submission_quota: Mapped[int] = mapped_column(Integer, default=50)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+
+    runs: Mapped[list["TriageRun"]] = relationship(
+        back_populates="org", cascade="all, delete-orphan",
+    )
+
+
 class TriageRun(Base):
     __tablename__ = "triage_runs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), index=True)
     submission_id: Mapped[str] = mapped_column(String(64), index=True)
     insured_name: Mapped[str] = mapped_column(String(256))
     primary_state: Mapped[str] = mapped_column(String(8))
@@ -39,6 +64,7 @@ class TriageRun(Base):
         DateTime(timezone=True), server_default=func.now(), index=True,
     )
 
+    org: Mapped[Org] = relationship(back_populates="runs")
     matches: Mapped[list["AppetiteMatchRow"]] = relationship(
         back_populates="run", cascade="all, delete-orphan", order_by="AppetiteMatchRow.score.desc()",
     )
