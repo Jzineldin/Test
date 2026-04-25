@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type { TriageResult } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+type Mode = "pdf" | "json";
 
 export default function Home() {
+  const [mode, setMode] = useState<Mode>("pdf");
   const [submissionJson, setSubmissionJson] = useState(
     JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2),
   );
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [result, setResult] = useState<TriageResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,21 +22,30 @@ export default function Home() {
     setError(null);
     setResult(null);
     try {
-      const parsed = JSON.parse(submissionJson);
-      const res = await fetch(`${API_URL}/triage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed),
-      });
-      if (!res.ok) {
-        throw new Error(`API ${res.status}: ${await res.text()}`);
-      }
+      const res = mode === "pdf" ? await uploadPdf() : await postJson();
+      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       setResult((await res.json()) as TriageResult);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function uploadPdf(): Promise<Response> {
+    if (!pdfFile) throw new Error("Drop or pick an ACORD PDF first.");
+    const form = new FormData();
+    form.append("file", pdfFile);
+    return fetch(`${API_URL}/triage/upload`, { method: "POST", body: form });
+  }
+
+  async function postJson(): Promise<Response> {
+    const parsed = JSON.parse(submissionJson);
+    return fetch(`${API_URL}/triage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed),
+    });
   }
 
   return (
@@ -48,37 +60,52 @@ export default function Home() {
         <span className="text-xs uppercase tracking-widest text-slate-500">v0 demo</span>
       </header>
 
-      <section className="grid grid-cols-1 gap-8 lg:grid-cols-[400px_1fr]">
+      <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-300">
-            Submission JSON
-          </label>
-          <textarea
-            value={submissionJson}
-            onChange={(e) => setSubmissionJson(e.target.value)}
-            spellCheck={false}
-            className="h-[480px] w-full rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-          />
+          <ModeTabs mode={mode} onChange={setMode} />
+          {mode === "pdf" ? (
+            <PdfDropzone file={pdfFile} onChange={setPdfFile} />
+          ) : (
+            <JsonEditor value={submissionJson} onChange={setSubmissionJson} />
+          )}
+
           <div className="mt-3 flex items-center gap-3">
             <button
               onClick={runTriage}
-              disabled={loading}
+              disabled={loading || (mode === "pdf" && !pdfFile)}
               className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
             >
               {loading ? "Triaging…" : "Run triage"}
             </button>
-            <button
-              onClick={() =>
-                setSubmissionJson(JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2))
-              }
-              className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
-            >
-              Reset to sample
-            </button>
+            {mode === "json" && (
+              <button
+                onClick={() =>
+                  setSubmissionJson(JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2))
+                }
+                className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
+              >
+                Reset to sample
+              </button>
+            )}
+            {mode === "pdf" && pdfFile && (
+              <button
+                onClick={() => setPdfFile(null)}
+                className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
+              >
+                Clear file
+              </button>
+            )}
           </div>
+
           <p className="mt-3 text-xs text-slate-500">
-            POSTs to <code>{API_URL}/triage</code>. Start the API with{" "}
-            <code>uvicorn app.main:app --reload</code> from the <code>api/</code> directory.
+            POSTs to{" "}
+            <code>{API_URL}{mode === "pdf" ? "/triage/upload" : "/triage"}</code>.
+            {mode === "pdf" && (
+              <>
+                {" "}PDF parsing requires GCP Document AI env vars on the API
+                — without them, the endpoint returns 503.
+              </>
+            )}
           </p>
         </div>
 
@@ -97,6 +124,7 @@ export default function Home() {
 
           {result && (
             <>
+              <DocAiGaps result={result} />
               <Matches matches={result.matches} summary={result.summary} />
               <DraftedEmails drafts={result.drafted_emails} />
             </>
@@ -105,6 +133,120 @@ export default function Home() {
       </section>
     </main>
   );
+}
+
+function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  return (
+    <div className="mb-3 inline-flex rounded-md border border-slate-800 p-1 text-xs">
+      {(["pdf", "json"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={
+            "rounded px-3 py-1.5 font-medium transition-colors " +
+            (mode === m
+              ? "bg-emerald-500 text-slate-950"
+              : "text-slate-400 hover:text-slate-200")
+          }
+        >
+          {m === "pdf" ? "Upload ACORD PDF" : "Paste JSON"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PdfDropzone({
+  file,
+  onChange,
+}: {
+  file: File | null;
+  onChange: (f: File | null) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleFile(f: File | undefined | null) {
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith(".pdf")) {
+      alert("Please drop a PDF file (ACORD 125 / 126 / 140).");
+      return;
+    }
+    onChange(f);
+  }
+
+  return (
+    <label
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleFile(e.dataTransfer.files?.[0]);
+      }}
+      className={
+        "flex h-[480px] cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center transition-colors " +
+        (dragOver
+          ? "border-emerald-500 bg-emerald-500/5"
+          : file
+          ? "border-emerald-700 bg-slate-950"
+          : "border-slate-800 bg-slate-950 hover:border-slate-700")
+      }
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+      {file ? (
+        <>
+          <p className="text-sm font-medium text-emerald-400">✓ {file.name}</p>
+          <p className="mt-1 text-xs text-slate-400">
+            {(file.size / 1024).toFixed(1)} KB · ready to triage
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-slate-300">
+            Drop an ACORD PDF here
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            or click to pick a file (ACORD 125 / 126 / 140)
+          </p>
+        </>
+      )}
+    </label>
+  );
+}
+
+function JsonEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      spellCheck={false}
+      className="h-[480px] w-full rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+    />
+  );
+}
+
+function DocAiGaps({ result }: { result: TriageResult }) {
+  // Surfaced via extra.docai_gaps; the API doesn't currently echo extra back
+  // through the TriageResult model, so this is a no-op until we extend it.
+  // Placeholder retained so the dashboard structure is in place.
+  void result;
+  return null;
 }
 
 function Matches({
