@@ -20,7 +20,6 @@ from fastapi import Request
 from .agent import load_carriers, triage_submission
 from .auth import CurrentOrg, current_org
 from .billing import current_period_usage, get_client as get_billing_client
-from .logging import configure_logging
 from .db import (
     ensure_demo_org,
     get_draft,
@@ -31,11 +30,15 @@ from .db import (
     record_quote_reply,
     save_triage_run,
     session_scope,
+    set_draft_outcome,
 )
 from .email import get_client as get_email_client
 from .llm import get_client
+from .logging import configure_logging
 from .models import Carrier, Submission, TriageResult
+from .notifications import Notification, get_client_for_url
 from .parsers.base import DocAiParser
+from .reports import summarize
 
 CARRIERS_DIR = Path(os.environ.get(
     "CARRIERS_DIR",
@@ -201,6 +204,9 @@ class DraftStatus(BaseModel):
     provider_message_id: str | None
     quote_replied_at: datetime | None
     quote_reply_body: str | None
+    outcome: str | None
+    outcome_set_at: datetime | None
+    bound_premium_cents: int | None
 
 
 def _draft_to_status(draft) -> DraftStatus:
@@ -215,6 +221,9 @@ def _draft_to_status(draft) -> DraftStatus:
         provider_message_id=draft.provider_message_id,
         quote_replied_at=draft.quote_replied_at,
         quote_reply_body=draft.quote_reply_body,
+        outcome=draft.outcome,
+        outcome_set_at=draft.outcome_set_at,
+        bound_premium_cents=draft.bound_premium_cents,
     )
 
 
@@ -265,14 +274,95 @@ def inbound_reply(payload: InboundReply) -> DraftStatus | None:
     Public endpoint (no auth) because email providers can't carry an API
     key — we match on the provider_message_id we generated when sending.
     Replies that don't match a draft are silently dropped (returns null).
+
+    Side effect: if the matched draft's org has a notification webhook
+    configured, fire a 'quote received' message there.
     """
+    notify_payload: tuple[str, Notification] | None = None
     with session_scope() as session:
         draft = record_quote_reply(
             session,
             provider_message_id=payload.provider_message_id,
             body=payload.body,
         )
-        return _draft_to_status(draft) if draft else None
+        if draft is None:
+            return None
+        run = draft.run
+        org = run.org
+        webhook_url = org.notification_webhook_url
+        status = _draft_to_status(draft)
+        if webhook_url:
+            notify_payload = (
+                webhook_url,
+                Notification(
+                    title=f"Quote received from {draft.carrier_id}",
+                    body=f"Insured: *{run.insured_name}* ({run.primary_state})",
+                    fields={
+                        "Carrier": draft.carrier_id,
+                        "Reply preview": (payload.body[:200] + "…") if len(payload.body) > 200 else payload.body,
+                    },
+                ),
+            )
+
+    # Fire-and-forget after the DB transaction so a failed webhook
+    # doesn't roll back the recorded reply.
+    if notify_payload is not None:
+        url, n = notify_payload
+        client = get_client_for_url(url)
+        if client is not None:
+            ok = client.send(n)
+            logger.info("notification.sent", extra={"ok": ok, "carrier_id": status.carrier_id})
+
+    return status
+
+
+class OutcomeUpdate(BaseModel):
+    outcome: str  # 'pending' | 'bound' | 'declined'
+    bound_premium_cents: int | None = None
+
+
+@app.post("/drafts/{draft_id}/outcome", response_model=DraftStatus)
+def update_outcome(
+    draft_id: int,
+    body: OutcomeUpdate,
+    org: CurrentOrg = Depends(current_org),
+) -> DraftStatus:
+    """Broker promotes a 'pending' reply to bound/declined."""
+    with session_scope() as session:
+        draft = get_draft(session, draft_id, org_id=org.id)
+        if draft is None:
+            raise HTTPException(404, detail=f"Draft {draft_id} not found")
+        try:
+            set_draft_outcome(
+                draft, outcome=body.outcome,
+                bound_premium_cents=body.bound_premium_cents,
+            )
+        except ValueError as e:
+            raise HTTPException(400, detail=str(e)) from e
+        return _draft_to_status(draft)
+
+
+# ---- Reports ---------------------------------------------------------------
+
+class ReportPayload(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    submissions_triaged: int
+    drafts_sent: int
+    drafts_replied: int
+    drafts_bound: int
+    drafts_declined: int
+    quote_back_rate: float
+    bind_rate: float
+    avg_hours_to_quote: float | None
+    bound_premium_dollars: float
+
+
+@app.get("/reports/summary", response_model=ReportPayload)
+def reports_summary(org: CurrentOrg = Depends(current_org)) -> ReportPayload:
+    with session_scope() as session:
+        s = summarize(session, org_id=org.id)
+    return ReportPayload(**s.__dict__)
 
 
 # ---- Billing ---------------------------------------------------------------

@@ -105,6 +105,25 @@ def record_quote_reply(
         return None
     draft.quote_replied_at = datetime.now(timezone.utc)
     draft.quote_reply_body = body
+    if draft.outcome is None:
+        draft.outcome = "pending"
+        draft.outcome_set_at = draft.quote_replied_at
+    return draft
+
+
+def set_draft_outcome(
+    draft: DraftedEmailRow,
+    *,
+    outcome: str,
+    bound_premium_cents: int | None = None,
+) -> DraftedEmailRow:
+    """Promote a 'pending' reply to 'bound' or 'declined'."""
+    if outcome not in {"pending", "bound", "declined"}:
+        raise ValueError(f"invalid outcome: {outcome!r}")
+    draft.outcome = outcome
+    draft.outcome_set_at = datetime.now(timezone.utc)
+    if outcome == "bound" and bound_premium_cents is not None:
+        draft.bound_premium_cents = bound_premium_cents
     return draft
 
 

@@ -25,6 +25,23 @@ export interface DraftStatus {
   provider_message_id: string | null;
   quote_replied_at: string | null;
   quote_reply_body: string | null;
+  outcome: "pending" | "bound" | "declined" | null;
+  outcome_set_at: string | null;
+  bound_premium_cents: number | null;
+}
+
+export interface ReportPayload {
+  period_start: string;
+  period_end: string;
+  submissions_triaged: number;
+  drafts_sent: number;
+  drafts_replied: number;
+  drafts_bound: number;
+  drafts_declined: number;
+  quote_back_rate: number;
+  bind_rate: number;
+  avg_hours_to_quote: number | null;
+  bound_premium_dollars: number;
 }
 
 export interface AppetiteMatch {

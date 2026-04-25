@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
   BillingUsage,
+  ReportPayload,
   TriageResult,
   TriageRunDetail,
   TriageRunSummary,
@@ -30,6 +31,7 @@ export default function Home() {
   const [history, setHistory] = useState<TriageRunSummary[]>([]);
   const [apiKey, setApiKey] = useState<string>("");
   const [usage, setUsage] = useState<BillingUsage | null>(null);
+  const [report, setReport] = useState<ReportPayload | null>(null);
 
   // Hydrate API key from localStorage; default to demo key on first visit.
   useEffect(() => {
@@ -66,10 +68,23 @@ export default function Home() {
     }
   }, [apiKey]);
 
+  const loadReport = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      const res = await fetch(`${API_URL}/reports/summary`, {
+        headers: authHeaders(apiKey),
+      });
+      if (res.ok) setReport((await res.json()) as ReportPayload);
+    } catch {
+      /* report is best-effort */
+    }
+  }, [apiKey]);
+
   useEffect(() => {
     loadHistory();
     loadUsage();
-  }, [loadHistory, loadUsage]);
+    loadReport();
+  }, [loadHistory, loadUsage, loadReport]);
 
   async function runTriage() {
     setLoading(true);
@@ -81,6 +96,7 @@ export default function Home() {
       setResult((await res.json()) as TriageResult);
       loadHistory();
       loadUsage();
+      loadReport();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -236,8 +252,58 @@ export default function Home() {
         </div>
       </section>
 
+      {report && <ReportStrip report={report} />}
       <History history={history} onOpen={openHistoryRun} />
     </main>
+  );
+}
+
+function ReportStrip({ report }: { report: ReportPayload }) {
+  const stats: { label: string; value: string }[] = [
+    { label: "Submissions this period", value: String(report.submissions_triaged) },
+    { label: "Drafts sent", value: String(report.drafts_sent) },
+    {
+      label: "Quote-back rate",
+      value: `${(report.quote_back_rate * 100).toFixed(0)}%`,
+    },
+    {
+      label: "Bind rate",
+      value: `${(report.bind_rate * 100).toFixed(0)}%`,
+    },
+    {
+      label: "Avg time-to-quote",
+      value: report.avg_hours_to_quote != null
+        ? `${report.avg_hours_to_quote.toFixed(1)}h`
+        : "—",
+    },
+    {
+      label: "Bound premium",
+      value: report.bound_premium_dollars > 0
+        ? `$${report.bound_premium_dollars.toLocaleString()}`
+        : "—",
+    },
+  ];
+  return (
+    <section className="mt-12 border-t border-slate-800 pt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
+        This period
+      </h2>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-md border border-slate-800 bg-slate-950 p-3"
+          >
+            <p className="text-xs uppercase tracking-widest text-slate-500">
+              {s.label}
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-slate-100">
+              {s.value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

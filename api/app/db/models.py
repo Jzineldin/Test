@@ -41,6 +41,7 @@ class Org(Base):
     stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     plan: Mapped[str] = mapped_column(String(32), default="trial")
     monthly_submission_quota: Mapped[int] = mapped_column(Integer, default=50)
+    notification_webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )
@@ -103,5 +104,11 @@ class DraftedEmailRow(Base):
     provider_message_id: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     quote_replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     quote_reply_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Outcome: 'bound' | 'declined' | 'pending' | null (untouched).
+    # 'pending' is what we set automatically when a reply lands; broker
+    # promotes to bound/declined manually after reading the quote.
+    outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    outcome_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    bound_premium_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     run: Mapped[TriageRun] = relationship(back_populates="drafts")

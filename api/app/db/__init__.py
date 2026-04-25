@@ -6,6 +6,7 @@ from .repository import (
     mark_draft_sent,
     record_quote_reply,
     save_triage_run,
+    set_draft_outcome,
 )
 from .orgs import (
     DEMO_API_KEY,
@@ -27,6 +28,7 @@ __all__ = [
     "get_draft",
     "mark_draft_sent",
     "record_quote_reply",
+    "set_draft_outcome",
     "DEMO_API_KEY",
     "create_org",
     "ensure_demo_org",
