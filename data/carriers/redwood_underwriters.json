@@ -1,0 +1,19 @@
+{
+  "carrier_id": "redwood_underwriters",
+  "name": "Redwood Underwriters",
+  "submission_email": "intake@redwood-uw.example",
+  "underwriter_name": "Priya Anand",
+  "typical_quote_back_days": 3,
+  "notes": "Small-account specialist (under $5M revenue). Fast turnaround. No habitational, no auto.",
+  "appetite": [
+    {
+      "naics_prefixes": ["238", "541", "811", "722"],
+      "states_in": ["TX", "OK", "AR", "NM", "LA", "KS", "MO", "CO"],
+      "states_out": [],
+      "lines": ["general_liability", "professional_liability"],
+      "revenue_max": "5000000",
+      "revenue_min": "0",
+      "notes": "Quote-back inside 72 hours when ACORD is complete."
+    }
+  ]
+}

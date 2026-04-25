@@ -1,0 +1,19 @@
+{
+  "carrier_id": "great_basin",
+  "name": "Great Basin Casualty",
+  "submission_email": "submissions@greatbasin-casualty.example",
+  "underwriter_name": "Theo Nakamura",
+  "typical_quote_back_days": 10,
+  "notes": "Large-account specialist for trucking and logistics. Won't touch contractors.",
+  "appetite": [
+    {
+      "naics_prefixes": ["484", "488", "493"],
+      "states_in": [],
+      "states_out": [],
+      "lines": ["commercial_auto", "umbrella", "general_liability"],
+      "revenue_max": null,
+      "revenue_min": "10000000",
+      "notes": "Fleet of 25+ power units required."
+    }
+  ]
+}
