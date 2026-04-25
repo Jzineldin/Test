@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Submission Triage Agent — FastAPI on Lambda + RDS Postgres
+
+# Deploy with:
+#   sam build && sam deploy --guided   # first time, creates samconfig.toml
+#   sam deploy                          # subsequent updates
+#
+# The first --guided run will prompt for parameter values; provide:
+#   * StripeSecretKey + StripeWebhookSecret  (from Stripe dashboard)
+#   * SesFromAddress                          (verified SES sender)
+#   * GcpProjectId + DocaiProcessorId         (after creating processor)
+#   * BedrockModelId                          (e.g. us.anthropic.claude-sonnet-4-6)
+
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+  CorsOrigins:
+    Type: String
+    Default: "*"
+    Description: Comma-list of dashboard origins. Tighten in prod.
+  BedrockModelId:
+    Type: String
+    Default: us.anthropic.claude-sonnet-4-6
+  GcpProjectId:
+    Type: String
+    Default: ""
+  DocaiProcessorId:
+    Type: String
+    Default: ""
+  SesFromAddress:
+    Type: String
+    Default: ""
+  StripeSecretKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+  StripeWebhookSecret:
+    Type: String
+    Default: ""
+    NoEcho: true
+  DatabaseUrl:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: postgresql+psycopg://user:pass@host:5432/db
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 30
+    MemorySize: 1024
+    Architectures: [arm64]
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AWS::Region
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        CORS_ORIGINS: !Ref CorsOrigins
+        DATABASE_URL: !Ref DatabaseUrl
+        DOCAI_PROCESSOR_ID: !Ref DocaiProcessorId
+        GCP_PROJECT_ID: !Ref GcpProjectId
+        SES_FROM_ADDRESS: !Ref SesFromAddress
+        STRIPE_SECRET_KEY: !Ref StripeSecretKey
+        STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub submission-triage-${StageName}
+      CodeUri: ../../api
+      Handler: app.lambda_handler.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              # Scope to Claude on Bedrock only — least privilege.
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-*
+                - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-*
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins: ["*"]
+          AllowMethods: [GET, POST, OPTIONS]
+          AllowHeaders: ["*"]
+
+Outputs:
+  ApiUrl:
+    Description: Lambda Function URL (point the dashboard NEXT_PUBLIC_API_URL here)
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl

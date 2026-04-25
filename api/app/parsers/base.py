@@ -2,7 +2,7 @@
 
 Two implementations:
   * JsonParser    — accepts already-normalized JSON (used by demo + tests)
-  * DocAiParser   — stub for GCP Document AI; activated when DOCAI_PROCESSOR_ID is set
+  * DocAiParser   — wraps a DocAiClient (real or fake) + the field mapper
 
 Selection happens via `get_parser(source)` so callers don't branch on env.
 """
@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Protocol
 
 from ..models import Submission
+from .docai_client import DocAiClient, GoogleDocAiClient, load_pdf
+from .field_map import fields_to_submission
 
 
 class AcordParser(Protocol):
@@ -32,23 +34,32 @@ class JsonParser:
 class DocAiParser:
     """Adapter for GCP Document AI ACORD form extractors.
 
-    Wires real DocAI when DOCAI_PROCESSOR_ID is configured. Until then it
-    raises with a clear message so the demo path stays obvious.
+    Holds a `DocAiClient` so tests can inject a fake. When constructed
+    without one, lazily builds a `GoogleDocAiClient` from env vars on
+    first parse — that's the only path that requires GCP credentials.
     """
 
-    def __init__(self) -> None:
-        self.processor_id = os.environ.get("DOCAI_PROCESSOR_ID")
-        self.project_id = os.environ.get("GCP_PROJECT_ID")
-        self.location = os.environ.get("DOCAI_LOCATION", "us")
+    def __init__(self, client: DocAiClient | None = None) -> None:
+        self._client = client
 
-    def parse(self, source: str | Path) -> Submission:
-        if not (self.processor_id and self.project_id):
+    def _resolved_client(self) -> DocAiClient:
+        if self._client is not None:
+            return self._client
+        if not (os.environ.get("DOCAI_PROCESSOR_ID") and os.environ.get("GCP_PROJECT_ID")):
             raise RuntimeError(
                 "DocAiParser not configured. Set DOCAI_PROCESSOR_ID and "
-                "GCP_PROJECT_ID, or use JsonParser for the local demo."
+                "GCP_PROJECT_ID, or pass a DocAiClient explicitly."
             )
-        # Real implementation lands here once the processor is deployed.
-        raise NotImplementedError("DocAI integration ships in next iteration")
+        self._client = GoogleDocAiClient()
+        return self._client
+
+    def parse(self, source: str | Path) -> Submission:
+        pdf_bytes = load_pdf(source)
+        return self.parse_bytes(pdf_bytes)
+
+    def parse_bytes(self, pdf_bytes: bytes) -> Submission:
+        fields = self._resolved_client().extract_fields(pdf_bytes)
+        return fields_to_submission(fields)
 
 
 def get_parser(source: str | Path) -> AcordParser:
