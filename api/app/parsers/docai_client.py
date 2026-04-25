@@ -7,13 +7,35 @@ the contract the field-mapper consumes.
 Set up in production:
     1. Enable Document AI API in your GCP project
     2. Create a Form Parser processor (or a custom ACORD extractor)
-    3. Export GOOGLE_APPLICATION_CREDENTIALS, GCP_PROJECT_ID, DOCAI_PROCESSOR_ID
+    3. Export GCP_PROJECT_ID, DOCAI_PROCESSOR_ID, and either
+       GOOGLE_APPLICATION_CREDENTIALS (path to a key file) or
+       GCP_SERVICE_ACCOUNT_JSON (inline JSON, written to /tmp on first use).
 """
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Protocol
+
+
+def _ensure_gcp_credentials() -> None:
+    """If GCP_SERVICE_ACCOUNT_JSON is set but no credentials file is on disk,
+    materialize it to a temp file and point GOOGLE_APPLICATION_CREDENTIALS
+    at it. Lets us keep service-account secrets in env vars on platforms
+    (Render, Lambda) that don't have a clean way to upload a file.
+    Idempotent: subsequent calls are no-ops."""
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+    raw = os.environ.get("GCP_SERVICE_ACCOUNT_JSON")
+    if not raw:
+        return
+    json.loads(raw)  # validate; surface a clearer error than the SDK would
+    fd, path = tempfile.mkstemp(prefix="gcp-sa-", suffix=".json")
+    with os.fdopen(fd, "w") as f:
+        f.write(raw)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path
 
 
 class DocAiClient(Protocol):
@@ -61,6 +83,7 @@ class GoogleDocAiClient:
     def extract_fields(self, pdf_bytes: bytes) -> dict[str, str]:
         from google.cloud import documentai  # lazy import
 
+        _ensure_gcp_credentials()
         client = documentai.DocumentProcessorServiceClient()
         name = client.processor_path(self.project_id, self.location, self.processor_id)
         raw_doc = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
