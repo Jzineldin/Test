@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
+  BillingUsage,
   TriageResult,
   TriageRunDetail,
   TriageRunSummary,
@@ -28,6 +29,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<TriageRunSummary[]>([]);
   const [apiKey, setApiKey] = useState<string>("");
+  const [usage, setUsage] = useState<BillingUsage | null>(null);
 
   // Hydrate API key from localStorage; default to demo key on first visit.
   useEffect(() => {
@@ -52,9 +54,22 @@ export default function Home() {
     }
   }, [apiKey]);
 
+  const loadUsage = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      const res = await fetch(`${API_URL}/billing/usage`, {
+        headers: authHeaders(apiKey),
+      });
+      if (res.ok) setUsage((await res.json()) as BillingUsage);
+    } catch {
+      /* usage is best-effort */
+    }
+  }, [apiKey]);
+
   useEffect(() => {
     loadHistory();
-  }, [loadHistory]);
+    loadUsage();
+  }, [loadHistory, loadUsage]);
 
   async function runTriage() {
     setLoading(true);
@@ -65,6 +80,7 @@ export default function Home() {
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       setResult((await res.json()) as TriageResult);
       loadHistory();
+      loadUsage();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,7 +158,10 @@ export default function Home() {
             Wholesale broker workflow — ACORD in, carrier-ready submissions out.
           </p>
         </div>
-        <ApiKeyInput value={apiKey} onChange={persistKey} />
+        <div className="flex items-center gap-4">
+          {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
+          <ApiKeyInput value={apiKey} onChange={persistKey} />
+        </div>
       </header>
 
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
@@ -277,6 +296,65 @@ function History({
         </table>
       </div>
     </section>
+  );
+}
+
+function UsageBadge({
+  usage,
+  apiKey,
+}: {
+  usage: BillingUsage;
+  apiKey: string;
+}) {
+  async function upgrade() {
+    const res = await fetch(`${API_URL}/billing/checkout-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify({
+        price_id: "price_demo",
+        success_url: `${window.location.origin}/?upgraded=1`,
+        cancel_url: window.location.origin,
+      }),
+    });
+    if (!res.ok) {
+      alert(`Could not create checkout link: ${await res.text()}`);
+      return;
+    }
+    const body = (await res.json()) as { url: string };
+    window.open(body.url, "_blank");
+  }
+
+  const pct = Math.min(
+    100,
+    Math.round((usage.submissions_this_period / Math.max(1, usage.monthly_submission_quota)) * 100),
+  );
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-slate-800 px-3 py-1.5 text-xs">
+      <div>
+        <div className="text-slate-400">
+          {usage.plan} ·{" "}
+          <span className={usage.over_quota ? "text-amber-400" : "text-slate-200"}>
+            {usage.submissions_this_period}/{usage.monthly_submission_quota}
+          </span>
+        </div>
+        <div className="mt-1 h-1 w-32 overflow-hidden rounded bg-slate-800">
+          <div
+            className={
+              "h-full " + (usage.over_quota ? "bg-amber-500" : "bg-emerald-500")
+            }
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+      {usage.plan === "trial" && (
+        <button
+          onClick={upgrade}
+          className="rounded-md bg-emerald-500 px-2 py-1 font-medium text-slate-950 hover:bg-emerald-400"
+        >
+          Upgrade
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -14,8 +14,11 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from fastapi import Request
+
 from .agent import load_carriers, triage_submission
 from .auth import CurrentOrg, current_org
+from .billing import current_period_usage, get_client as get_billing_client
 from .db import (
     ensure_demo_org,
     get_draft,
@@ -238,6 +241,124 @@ def inbound_reply(payload: InboundReply) -> DraftStatus | None:
             body=payload.body,
         )
         return _draft_to_status(draft) if draft else None
+
+
+# ---- Billing ---------------------------------------------------------------
+
+class BillingUsage(BaseModel):
+    org_id: int
+    plan: str
+    monthly_submission_quota: int
+    submissions_this_period: int
+    over_quota: bool
+
+
+class CheckoutLinkRequest(BaseModel):
+    price_id: str
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutLinkResponse(BaseModel):
+    session_id: str
+    url: str
+    customer_id: str | None
+
+
+@app.get("/billing/usage", response_model=BillingUsage)
+def billing_usage(org: CurrentOrg = Depends(current_org)) -> BillingUsage:
+    with session_scope() as session:
+        used = current_period_usage(session, org_id=org.id)
+    return BillingUsage(
+        org_id=org.id,
+        plan=org.plan,
+        monthly_submission_quota=org.monthly_submission_quota,
+        submissions_this_period=used,
+        over_quota=used >= org.monthly_submission_quota,
+    )
+
+
+@app.post("/billing/checkout-link", response_model=CheckoutLinkResponse)
+def billing_checkout_link(
+    body: CheckoutLinkRequest,
+    org: CurrentOrg = Depends(current_org),
+) -> CheckoutLinkResponse:
+    """Create a Stripe Checkout Session and lazily provision the customer.
+
+    Returns a URL the broker can open to start the subscription. Stub
+    client returns a deterministic fake URL for local dev.
+    """
+    client = get_billing_client()
+    with session_scope() as session:
+        # Refresh the row so we can persist the stripe customer id.
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        if row.stripe_customer_id is None:
+            row.stripe_customer_id = client.ensure_customer(
+                org_id=row.id, name=row.name, slug=row.slug,
+            )
+        customer_id = row.stripe_customer_id
+    session_obj = client.create_checkout_session(
+        customer_id=customer_id,
+        price_id=body.price_id,
+        success_url=body.success_url,
+        cancel_url=body.cancel_url,
+    )
+    return CheckoutLinkResponse(
+        session_id=session_obj.id,
+        url=session_obj.url,
+        customer_id=session_obj.customer_id,
+    )
+
+
+@app.post("/webhooks/stripe")
+async def stripe_webhook(request: Request) -> dict[str, str]:
+    """Handle Stripe webhook events.
+
+    Real Stripe traffic carries 'stripe-signature'; the stub client skips
+    verification so devs can curl-test event handling locally.
+    """
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature", "")
+    client = get_billing_client()
+    try:
+        event = client.verify_webhook(payload=payload, signature=signature)
+    except Exception as e:  # signature mismatch, malformed JSON, etc.
+        raise HTTPException(status_code=400, detail=f"Invalid webhook: {e}") from e
+
+    event_type = event.get("type", "")
+    data = event.get("data", {}).get("object", {})
+
+    if event_type == "checkout.session.completed":
+        # Promote the org to 'active' once payment lands.
+        customer_id = data.get("customer")
+        if customer_id:
+            with session_scope() as session:
+                from .db.models import Org as OrgRow
+                from sqlalchemy import select
+                row = session.execute(
+                    select(OrgRow).where(OrgRow.stripe_customer_id == customer_id)
+                ).scalar_one_or_none()
+                if row is not None:
+                    row.plan = "active"
+                    row.monthly_submission_quota = 500
+        return {"status": "checkout_completed"}
+
+    if event_type == "customer.subscription.deleted":
+        customer_id = data.get("customer")
+        if customer_id:
+            with session_scope() as session:
+                from .db.models import Org as OrgRow
+                from sqlalchemy import select
+                row = session.execute(
+                    select(OrgRow).where(OrgRow.stripe_customer_id == customer_id)
+                ).scalar_one_or_none()
+                if row is not None:
+                    row.plan = "cancelled"
+                    row.monthly_submission_quota = 50
+        return {"status": "subscription_cancelled"}
+
+    return {"status": "ignored", "type": event_type}
 
 
 @app.get("/history/{run_id}", response_model=TriageRunDetail)

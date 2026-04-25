@@ -1,5 +1,19 @@
 // Mirrors api/app/models.py — keep in sync until we generate from OpenAPI.
 
+export interface BillingUsage {
+  org_id: number;
+  plan: string;
+  monthly_submission_quota: number;
+  submissions_this_period: number;
+  over_quota: boolean;
+}
+
+export interface CheckoutLinkResponse {
+  session_id: string;
+  url: string;
+  customer_id: string | null;
+}
+
 export interface DraftStatus {
   id: number;
   carrier_id: string;
