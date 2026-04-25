@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const STRIPE_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ?? "price_demo";
 const API_KEY_STORAGE = "submission-triage-api-key";
 const DEFAULT_DEMO_KEY = "demo-key-change-in-prod";
 type Mode = "pdf" | "json";
@@ -634,7 +635,7 @@ function UsageBadge({
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
       body: JSON.stringify({
-        price_id: "price_demo",
+        price_id: STRIPE_PRICE_ID,
         success_url: `${window.location.origin}/?upgraded=1`,
         cancel_url: window.location.origin,
       }),
