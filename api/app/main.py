@@ -5,6 +5,7 @@ The demo seed creates one Org with a well-known key (see /me to fetch it).
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from fastapi import Request
 from .agent import load_carriers, triage_submission
 from .auth import CurrentOrg, current_org
 from .billing import current_period_usage, get_client as get_billing_client
+from .logging import configure_logging
 from .db import (
     ensure_demo_org,
     get_draft,
@@ -40,7 +42,10 @@ CARRIERS_DIR = Path(os.environ.get(
     Path(__file__).resolve().parents[2] / "data" / "carriers",
 ))
 
-app = FastAPI(title="Submission Triage Agent", version="0.2.0")
+configure_logging()
+logger = logging.getLogger("submission_triage")
+
+app = FastAPI(title="Submission Triage Agent", version="0.3.0")
 
 _cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
@@ -112,6 +117,16 @@ def _run_and_persist(submission: Submission, org_id: int) -> TriageResult:
         by_carrier = {d.carrier_id: d.id for d in run.drafts}
         for d in result.drafted_emails:
             d.id = by_carrier.get(d.carrier_id)
+        logger.info(
+            "triage.completed",
+            extra={
+                "org_id": org_id,
+                "submission_id": result.submission_id,
+                "insured": submission.insured.legal_name,
+                "match_count": len(result.matches),
+                "draft_count": len(result.drafted_emails),
+            },
+        )
     return result
 
 

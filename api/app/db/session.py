@@ -27,8 +27,32 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
 
 
 def init_db() -> None:
-    """Create all tables. Safe to call on startup; no-op if tables exist."""
+    """Idempotent schema bootstrap.
+
+    Tests and local dev hit this; it just calls create_all (fast, no
+    process forking, no alembic dependency at test time). For prod
+    deploys, see `run_migrations()` — it's the one with version safety.
+    """
     Base.metadata.create_all(bind=engine)
+
+
+def run_migrations() -> None:
+    """Run `alembic upgrade head` programmatically.
+
+    Lambda startup calls this so each cold start ensures the schema is
+    up to date before the first request lands. Idempotent: a no-op if
+    we're already at head.
+    """
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    cfg_path = Path(__file__).resolve().parents[2] / "alembic.ini"
+    cfg = Config(str(cfg_path))
+    cfg.set_main_option("script_location", str(cfg_path.parent / "migrations"))
+    cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    command.upgrade(cfg, "head")
 
 
 @contextmanager

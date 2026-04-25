@@ -166,13 +166,49 @@ data/
 docs/                    ICP, architecture deep-dives
 ```
 
+## Schema migrations
+
+Alembic is wired and tracks the schema. Initial revision lives at
+`api/migrations/versions/`. Lambda cold start runs `alembic upgrade head`
+before serving traffic; tests use `Base.metadata.create_all()` for speed.
+
+```bash
+# Generate a new migration after changing models
+cd api && .venv/bin/alembic revision --autogenerate -m "add foo column"
+
+# Apply migrations (idempotent)
+.venv/bin/alembic upgrade head
+
+# Roll back one step
+.venv/bin/alembic downgrade -1
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every PR + push to main:
+- API: `pytest` (66 tests) + `alembic upgrade head` against a fresh DB
+- Dashboard: `npm ci` + `next build`
+
+## Observability
+
+`api/app/logging.py` produces structured JSON on stdout. CloudWatch indexes
+every key automatically; locally you can `jq` the output:
+
+```bash
+uvicorn app.main:app | jq 'select(.logger == "submission_triage")'
+```
+
+Each `triage.completed` event carries `org_id`, `submission_id`, `insured`,
+`match_count`, `draft_count`. Override `LOG_LEVEL=DEBUG` to see HTTP-level
+chatter.
+
 ## What's deliberately not built yet
 
-- **alembic migrations** — `Base.metadata.create_all()` is fine pre-launch;
-  add alembic before the first prod schema change.
 - **Magic-link / OAuth login** — current auth is API-key only. The dashboard
   exposes the key to users in localStorage; productionize before public launch.
 - **Custom DocAI processor** — generic Form Parser is wired; for ACORD-specific
   accuracy, train a Document AI Custom Extractor on labeled forms.
 - **Per-quote outcome pricing** — usage today is per-submission. Switch to a
   dedicated `usage_records` table when we move to per-quote.
+- **Rate limiting** — none yet. Lambda concurrency caps are the only ceiling.
+  Add `slowapi` or AWS WAF before the first public-facing pilot.
