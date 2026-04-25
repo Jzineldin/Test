@@ -1,18 +1,21 @@
-"""API-key auth as a FastAPI dependency.
+"""API-key OR session-cookie auth as a FastAPI dependency.
 
-Clients send `Authorization: Bearer <api_key>`. The dependency resolves
-the Org or raises 401. Endpoints depend on `current_org` to receive a
-detached copy of the Org row (so request handlers don't share a session
-with the persistence layer).
+Two auth paths land at the same `current_org`:
+  1. `Authorization: Bearer <api_key>` (machine-to-machine + back-compat)
+  2. `triage_session=<secret>` cookie (browser sessions from magic-link)
+
+Whichever resolves first wins. Both are checked against the DB, both
+return CurrentOrg with the same shape so endpoints don't branch.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 
 from .db import get_org_by_api_key, session_scope
+from .magic_link import COOKIE_NAME, resolve_session
 
 
 @dataclass(frozen=True)
@@ -22,41 +25,66 @@ class CurrentOrg:
     slug: str
     plan: str
     monthly_submission_quota: int
+    user_id: int | None = None       # set when authed by session cookie
+    user_email: str | None = None    # ditto
+    user_role: str | None = None     # ditto
 
 
-def _bearer_token(authorization: str | None) -> str:
+def _bearer_token(authorization: str | None) -> str | None:
     if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return None
     parts = authorization.split(" ", 1)
     if len(parts) != 2 or parts[0].lower() != "bearer" or not parts[1]:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization must be 'Bearer <api_key>'",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return None
     return parts[1].strip()
+
+
+def _unauthorized(detail: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def current_org(
     authorization: Annotated[str | None, Header()] = None,
+    triage_session: Annotated[str | None, Cookie()] = None,
 ) -> CurrentOrg:
     token = _bearer_token(authorization)
+
+    # Prefer session cookie when both are present — more specific identity.
     with session_scope() as session:
-        org = get_org_by_api_key(session, token)
-        if org is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return CurrentOrg(
-            id=org.id,
-            name=org.name,
-            slug=org.slug,
-            plan=org.plan,
-            monthly_submission_quota=org.monthly_submission_quota,
-        )
+        if triage_session:
+            resolved = resolve_session(session, triage_session)
+            if resolved is not None:
+                user, _sess = resolved
+                from .db.models import Org as OrgRow
+                org = session.get(OrgRow, user.org_id)
+                if org is not None:
+                    return CurrentOrg(
+                        id=org.id,
+                        name=org.name,
+                        slug=org.slug,
+                        plan=org.plan,
+                        monthly_submission_quota=org.monthly_submission_quota,
+                        user_id=user.id,
+                        user_email=user.email,
+                        user_role=user.role,
+                    )
+
+        if token:
+            org = get_org_by_api_key(session, token)
+            if org is not None:
+                return CurrentOrg(
+                    id=org.id,
+                    name=org.name,
+                    slug=org.slug,
+                    plan=org.plan,
+                    monthly_submission_quota=org.monthly_submission_quota,
+                )
+            raise _unauthorized("Invalid API key")
+
+    if not token and not triage_session:
+        raise _unauthorized("Missing Authorization header or session cookie")
+    raise _unauthorized("Invalid session")

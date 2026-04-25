@@ -56,6 +56,66 @@ class Org(Base):
     )
 
 
+class User(Base):
+    """Identity within an Org.
+
+    Roles:
+      * admin   — can change org settings, invite other users, see audit
+      * csr     — runs triage, sends drafts, records outcomes
+    """
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), index=True)
+    email: Mapped[str] = mapped_column(String(256), unique=True, index=True)
+    name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    role: Mapped[str] = mapped_column(String(16), default="csr")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+
+
+class MagicLinkToken(Base):
+    """One-shot login token mailed to a user.
+
+    Tokens are 32 random bytes hex-encoded. We store the SHA-256 of the
+    token, never the plaintext — matches the auth-cookie pattern.
+    """
+    __tablename__ = "magic_link_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+
+
+class Session(Base):
+    """Active login session.
+
+    Cookie value is the SHA-256 of `secret`; the secret never lives in
+    the DB. 30-day rolling expiry — bumped on every authenticated request.
+    """
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    secret_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+
+
 class AuditEvent(Base):
     """Append-only event log.
 

@@ -11,8 +11,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Cookie, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from fastapi import Request
@@ -46,6 +47,15 @@ from .notifications import Notification, get_client_for_url
 from .parsers.base import DocAiParser
 from .reports import summarize
 from .webhook_auth import verify_signature
+from .magic_link import (
+    COOKIE_NAME,
+    SESSION_TTL,
+    consume_magic_link,
+    create_session,
+    get_user_by_email,
+    issue_magic_link,
+    revoke_session,
+)
 
 CARRIERS_DIR = Path(os.environ.get(
     "CARRIERS_DIR",
@@ -91,6 +101,90 @@ def _startup() -> None:
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# ---- Magic-link auth -------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    email: str
+
+
+@app.post("/auth/login", status_code=204)
+def auth_login(body: LoginRequest) -> None:
+    """Mail a magic-link to `email` if it belongs to a user.
+
+    Always returns 204 — never leak which emails are registered. The
+    actual email send goes through the configured EmailClient; with no
+    SES creds set, the link lands in the in-memory stub outbox so devs
+    can grep for it.
+    """
+    with session_scope() as session:
+        user = get_user_by_email(session, body.email)
+        if user is None:
+            return None
+        token = issue_magic_link(session, user)
+
+    base = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+    link = f"{base}/login/verify?token={token}"
+    email_client = get_email_client()
+    email_client.send(
+        to=user.email,
+        subject="Your Submission Triage login link",
+        body=(
+            f"Hi {user.name or user.email.split('@')[0]},\n\n"
+            f"Click below to sign in. Link expires in 15 minutes.\n\n"
+            f"{link}\n\n"
+            "If you didn't request this, ignore the email.\n"
+        ),
+    )
+    return None
+
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+class VerifyResponse(BaseModel):
+    user_id: int
+    user_email: str
+    org_slug: str
+
+
+@app.post("/auth/verify", response_model=VerifyResponse)
+def auth_verify(body: VerifyRequest, response: "Response") -> VerifyResponse:
+    """Exchange a magic-link token for a session cookie."""
+    with session_scope() as session:
+        user = consume_magic_link(session, body.token)
+        if user is None:
+            raise HTTPException(401, detail="Invalid or expired link")
+        secret = create_session(session, user)
+        from .db.models import Org as OrgRow
+        org = session.get(OrgRow, user.org_id)
+        org_slug = org.slug if org else ""
+        user_id = user.id
+        user_email = user.email
+
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=secret,
+        max_age=int(SESSION_TTL.total_seconds()),
+        httponly=True,
+        samesite="lax",
+        secure=os.environ.get("COOKIE_SECURE", "false").lower() == "true",
+    )
+    return VerifyResponse(user_id=user_id, user_email=user_email, org_slug=org_slug)
+
+
+@app.post("/auth/logout", status_code=204)
+def auth_logout(
+    response: "Response",
+    triage_session: str | None = Cookie(default=None),
+) -> None:
+    if triage_session:
+        with session_scope() as session:
+            revoke_session(session, triage_session)
+    response.delete_cookie(COOKIE_NAME)
+    return None
 
 
 @app.get("/me")
