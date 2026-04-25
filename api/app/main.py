@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import load_carriers, triage_submission
 from .llm import get_client
@@ -24,6 +25,15 @@ CARRIERS_DIR = Path(os.environ.get(
 ))
 
 app = FastAPI(title="Submission Triage Agent", version="0.1.0")
+
+# Dashboard runs on localhost:3000 in dev; tighten to specific origins in prod.
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/healthz")

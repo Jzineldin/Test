@@ -64,15 +64,29 @@ Quote-back tracking + nudges
 
 ## Run the demo
 
+**CLI (offline, deterministic):**
 ```bash
 cd api
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m app.cli demo data/submissions/acme_plumbing.json
+python -m app.cli ../data/submissions/acme_plumbing.json
+# Use real Claude:
+ANTHROPIC_API_KEY=... python -m app.cli ../data/submissions/acme_plumbing.json --live
 ```
 
-The CLI runs end-to-end with stub LLM (deterministic output). To use real
-Claude, set `ANTHROPIC_API_KEY` and pass `--live`.
+**API + Dashboard:**
+```bash
+# terminal 1 — API
+cd api && .venv/bin/uvicorn app.main:app --reload
+
+# terminal 2 — dashboard
+cd web && npm install && npm run dev   # http://localhost:3000
+```
+
+**Tests:**
+```bash
+cd api && .venv/bin/pytest
+```
 
 ## Layout
 
@@ -80,12 +94,17 @@ Claude, set `ANTHROPIC_API_KEY` and pass `--live`.
 api/
   app/
     models.py         # pydantic domain models
-    parsers/          # ACORD parsers (stub + DocAI adapter)
-    agent/            # appetite-match + drafter
-    llm/              # LLM client (stub + Anthropic + Bedrock)
+    parsers/          # ACORD parsers (JSON today, DocAI adapter ready)
+    agent/            # prefilter + appetite-match + drafter
+    llm/              # LlmClient (Stub + Anthropic, Bedrock to follow)
     main.py           # FastAPI app
     cli.py            # demo CLI
+  tests/              # pytest suite
   requirements.txt
+web/
+  app/                # Next.js 15 App Router
+  lib/                # shared types + embedded sample
+  package.json
 data/
   carriers/           # carrier appetite guides (JSON)
   submissions/        # sample submissions
