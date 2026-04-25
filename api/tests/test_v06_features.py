@@ -137,7 +137,8 @@ def test_audit_records_send_and_outcome(client):
     detail = client.get(f"/history/{history[0]['id']}", headers=HEADERS).json()
     draft_id = detail["result"]["drafted_emails"][0]["id"]
     sent = client.post(f"/drafts/{draft_id}/send", headers=HEADERS).json()
-    client.post("/webhooks/inbound", json={
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {
         "provider_message_id": sent["provider_message_id"], "body": "ok",
     })
     client.post(
@@ -174,6 +175,7 @@ def _email_payload(*, to_addr: str, pdf_bytes: bytes = b"%PDF-fake") -> dict:
 
 
 def test_email_forward_unmatched_address_returns_unmatched(client):
+    # Unmatched address never reaches signature check.
     r = client.post("/webhooks/email", json=_email_payload(to_addr="nope@example.com"))
     assert r.status_code == 200
     assert r.json() == {"status": "unmatched", "to": "nope@example.com"}
@@ -187,16 +189,38 @@ def test_email_forward_no_pdf_skipped(client):
 
 
 def test_email_forward_resolves_org_by_inbox_alias(client):
+    from tests.conftest import signed_post
     client.patch(
         "/me",
         json={"forward_inbox_address": "triage+demo@yourdomain.example"},
         headers=HEADERS,
     )
-    # DocAI not configured; we expect 'skipped' but only after org-match.
-    r = client.post(
-        "/webhooks/email",
-        json=_email_payload(to_addr="triage+demo@yourdomain.example"),
+    # Matched address requires signature; DocAI is unconfigured so the
+    # final status is 'skipped' for that reason.
+    r = signed_post(
+        client, "/webhooks/email",
+        _email_payload(to_addr="triage+demo@yourdomain.example"),
     )
     body = r.json()
     assert body["status"] == "skipped"
     assert body["reason"] == "DocAI not configured"
+
+
+def test_email_forward_rejects_bad_signature(client):
+    """Matched org with an invalid signature -> 401."""
+    client.patch(
+        "/me",
+        json={"forward_inbox_address": "triage+demo@yourdomain.example"},
+        headers=HEADERS,
+    )
+    import json as _json
+    body = _json.dumps(_email_payload(to_addr="triage+demo@yourdomain.example")).encode()
+    r = client.post(
+        "/webhooks/email",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Triage-Signature": "sha256=bogus",
+        },
+    )
+    assert r.status_code == 401

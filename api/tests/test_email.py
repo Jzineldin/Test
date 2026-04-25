@@ -95,7 +95,8 @@ def test_send_requires_auth(client):
 def test_inbound_webhook_matches_to_sent_draft(client):
     draft_id = _seed_triage(client)
     sent = client.post(f"/drafts/{draft_id}/send", headers=HEADERS).json()
-    reply = client.post("/webhooks/inbound", json={
+    from tests.conftest import signed_post
+    reply = signed_post(client, "/webhooks/inbound", {
         "provider_message_id": sent["provider_message_id"],
         "body": "Quoting at $42,000. Effective 2026-06-01.",
     })
@@ -107,12 +108,29 @@ def test_inbound_webhook_matches_to_sent_draft(client):
 
 
 def test_inbound_webhook_unknown_id_returns_null(client):
+    # Unknown id matches no draft, so signature is never checked.
     r = client.post("/webhooks/inbound", json={
         "provider_message_id": "never-sent-this",
         "body": "spam",
     })
     assert r.status_code == 200
     assert r.json() is None
+
+
+def test_inbound_bad_signature_returns_401(client):
+    """Matched draft + invalid signature -> 401, no side effects."""
+    draft_id = _seed_triage(client)
+    sent = client.post(f"/drafts/{draft_id}/send", headers=HEADERS).json()
+    r = client.post("/webhooks/inbound", json={
+        "provider_message_id": sent["provider_message_id"],
+        "body": "should not be recorded",
+    })
+    # Default JSON post has no signature header -> 401
+    assert r.status_code == 401
+    # And the draft should still be in 'sent but not replied' state.
+    state = client.get(f"/drafts/{draft_id}", headers=HEADERS).json()
+    assert state["sent_at"] is not None
+    assert state["quote_replied_at"] is None
 
 
 def test_get_draft_status_round_trips(client):

@@ -119,7 +119,8 @@ def test_digest_empty_when_nothing_recent(client):
 def test_digest_includes_recent_reply_and_outcome(client):
     draft_id = _seed(client)
     sent = client.post(f"/drafts/{draft_id}/send", headers=HEADERS).json()
-    client.post("/webhooks/inbound", json={
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {
         "provider_message_id": sent["provider_message_id"],
         "body": "Quote at $42k",
     })
@@ -139,7 +140,8 @@ def test_digest_respects_since_param(client):
     """A future `since` returns an empty list."""
     draft_id = _seed(client)
     sent = client.post(f"/drafts/{draft_id}/send", headers=HEADERS).json()
-    client.post("/webhooks/inbound", json={
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {
         "provider_message_id": sent["provider_message_id"], "body": "x",
     })
 

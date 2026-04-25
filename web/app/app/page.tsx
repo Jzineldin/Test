@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
   BillingUsage,
+  DigestItem,
   ReportPayload,
   TriageResult,
   TriageRunDetail,
@@ -34,6 +35,7 @@ export default function Home() {
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "" });
   const [showSettings, setShowSettings] = useState(false);
+  const [digest, setDigest] = useState<DigestItem[]>([]);
 
   // Hydrate API key from localStorage; default to demo key on first visit.
   useEffect(() => {
@@ -85,11 +87,24 @@ export default function Home() {
     }
   }, [apiKey]);
 
+  const loadDigest = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      const res = await fetch(`${API_URL}/reports/digest`, {
+        headers: authHeaders(apiKey),
+      });
+      if (res.ok) setDigest((await res.json()) as DigestItem[]);
+    } catch {
+      /* digest is best-effort */
+    }
+  }, [apiKey]);
+
   useEffect(() => {
     loadHistory();
     loadUsage();
     loadReport();
-  }, [loadHistory, loadUsage, loadReport]);
+    loadDigest();
+  }, [loadHistory, loadUsage, loadReport, loadDigest]);
 
   async function runTriage() {
     setLoading(true);
@@ -132,6 +147,25 @@ export default function Home() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  async function setOutcome(
+    draftId: number,
+    outcome: "bound" | "declined",
+    bound_premium_cents?: number,
+  ) {
+    const body: Record<string, unknown> = { outcome };
+    if (bound_premium_cents != null) body.bound_premium_cents = bound_premium_cents;
+    const res = await fetch(`${API_URL}/drafts/${draftId}/outcome`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setError(`API ${res.status}: ${await res.text()}`);
+      return;
+    }
+    loadReport();
   }
 
   async function openHistoryRun(runId: number) {
@@ -261,13 +295,18 @@ export default function Home() {
             <>
               <DocAiGaps result={result} />
               <Matches matches={result.matches} summary={result.summary} />
-              <DraftedEmails drafts={result.drafted_emails} onSend={sendDraft} />
+              <DraftedEmails
+                drafts={result.drafted_emails}
+                onSend={sendDraft}
+                onOutcome={setOutcome}
+              />
             </>
           )}
         </div>
       </section>
 
       {report && <ReportStrip report={report} />}
+      {digest.length > 0 && <DigestPanel items={digest} />}
       <History
         history={history}
         onOpen={openHistoryRun}
@@ -388,6 +427,48 @@ function Field({
         className="mt-1 block w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
       />
     </label>
+  );
+}
+
+function DigestPanel({ items }: { items: DigestItem[] }) {
+  return (
+    <section className="mt-12 border-t border-slate-800 pt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
+        Recent activity ({items.length})
+      </h2>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li
+            key={`${item.kind}-${item.draft_id}-${item.when}`}
+            className="flex items-start gap-3 rounded-md border border-slate-800 bg-slate-950 p-3 text-sm"
+          >
+            <span
+              className={
+                "mt-0.5 rounded-full px-2 py-0.5 text-xs font-medium " +
+                (item.kind === "bound"
+                  ? "bg-emerald-500/15 text-emerald-400"
+                  : item.kind === "declined"
+                  ? "bg-slate-700/40 text-slate-300"
+                  : "bg-amber-500/15 text-amber-400")
+              }
+            >
+              {item.kind}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-slate-200">
+                <span className="font-medium">{item.insured_name}</span>{" "}
+                <span className="text-slate-500">·</span>{" "}
+                <span className="text-slate-400">{item.carrier_id}</span>
+              </p>
+              <p className="truncate text-xs text-slate-500">{item.summary}</p>
+            </div>
+            <span className="whitespace-nowrap text-xs text-slate-500">
+              {new Date(item.when).toLocaleString()}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -801,9 +882,11 @@ function Matches({
 function DraftedEmails({
   drafts,
   onSend,
+  onOutcome,
 }: {
   drafts: TriageResult["drafted_emails"];
   onSend: (id: number) => void;
+  onOutcome: (id: number, outcome: "bound" | "declined", premiumCents?: number) => void;
 }) {
   return (
     <section>
@@ -831,7 +914,7 @@ function DraftedEmails({
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-300">
                 {d.body}
               </pre>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => d.id && onSend(d.id)}
                   disabled={!d.id || isSent}
@@ -844,12 +927,29 @@ function DraftedEmails({
                 >
                   {isSent ? "Sent" : "Send to carrier"}
                 </button>
-                <button
-                  disabled
-                  className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900 disabled:opacity-50"
-                >
-                  Edit draft
-                </button>
+                {isSent && d.id && (
+                  <>
+                    <span className="ml-2 text-xs text-slate-500">Outcome:</span>
+                    <button
+                      onClick={() => {
+                        const raw = prompt("Bound premium ($):");
+                        if (raw == null) return;
+                        const cents = Math.round(parseFloat(raw) * 100);
+                        if (!Number.isFinite(cents)) return;
+                        onOutcome(d.id!, "bound", cents);
+                      }}
+                      className="rounded-md border border-emerald-700 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20"
+                    >
+                      Mark bound
+                    </button>
+                    <button
+                      onClick={() => onOutcome(d.id!, "declined")}
+                      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+                    >
+                      Mark declined
+                    </button>
+                  </>
+                )}
               </div>
             </article>
           );

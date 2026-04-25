@@ -45,6 +45,7 @@ from .models import Carrier, Submission, TriageResult
 from .notifications import Notification, get_client_for_url
 from .parsers.base import DocAiParser
 from .reports import summarize
+from .webhook_auth import verify_signature
 
 CARRIERS_DIR = Path(os.environ.get(
     "CARRIERS_DIR",
@@ -105,6 +106,7 @@ def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
             "monthly_submission_quota": org.monthly_submission_quota,
             "notification_webhook_url": row.notification_webhook_url,
             "forward_inbox_address": row.forward_inbox_address,
+            "webhook_secret": row.webhook_secret,
         }
 
 
@@ -456,18 +458,42 @@ class InboundEmail(BaseModel):
 
 
 @app.post("/webhooks/inbound", response_model=DraftStatus | None)
-def inbound_reply(payload: InboundReply) -> DraftStatus | None:
+async def inbound_reply(request: Request) -> DraftStatus | None:
     """Match an inbound reply to the originating draft and record it.
 
     Public endpoint (no auth) because email providers can't carry an API
-    key — we match on the provider_message_id we generated when sending.
-    Replies that don't match a draft are silently dropped (returns null).
-
-    Side effect: if the matched draft's org has a notification webhook
-    configured, fire a 'quote received' message there.
+    key — instead, payloads must be HMAC-signed with the org's
+    webhook_secret. Replies that don't match a draft are silently
+    dropped (returns null).
     """
+    raw = await request.body()
+    signature = request.headers.get("x-triage-signature")
+    try:
+        payload = InboundReply.model_validate_json(raw)
+    except Exception as e:
+        raise HTTPException(400, detail=f"Invalid JSON: {e}") from e
+
     notify_payload: tuple[str, Notification] | None = None
     with session_scope() as session:
+        # Lookup the draft FIRST so we can fetch the org's webhook_secret
+        # before recording anything. Wrong signature -> 401 with no
+        # side effects.
+        from sqlalchemy import select
+        from .db.models import DraftedEmailRow, Org as OrgRow, TriageRun
+
+        row = session.execute(
+            select(DraftedEmailRow, OrgRow)
+            .join(TriageRun, DraftedEmailRow.run_id == TriageRun.id)
+            .join(OrgRow, TriageRun.org_id == OrgRow.id)
+            .where(DraftedEmailRow.provider_message_id == payload.provider_message_id)
+        ).one_or_none()
+        if row is None:
+            return None
+        draft_row, org_row = row
+        verify_signature(
+            secret=org_row.webhook_secret, body=raw, header=signature,
+        )
+
         draft = record_quote_reply(
             session,
             provider_message_id=payload.provider_message_id,
@@ -492,8 +518,6 @@ def inbound_reply(payload: InboundReply) -> DraftStatus | None:
                 ),
             )
 
-    # Fire-and-forget after the DB transaction so a failed webhook
-    # doesn't roll back the recorded reply.
     if notify_payload is not None:
         url, n = notify_payload
         client = get_client_for_url(url)
@@ -633,18 +657,21 @@ def reports_digest(
 
 
 @app.post("/webhooks/email", response_model=TriageResult | dict)
-def inbound_email(payload: InboundEmail) -> TriageResult | dict:
+async def inbound_email(request: Request) -> TriageResult | dict:
     """A forwarded retail-agent email lands here, ACORD attached.
 
-    Public endpoint (no auth) — we resolve the org by matching the `to`
-    address against `Org.forward_inbox_address`. Each broker gets a
-    unique inbox alias they configure under PATCH /me.
-
-    The first PDF attachment runs through DocAI -> triage. Returns the
-    TriageResult on success; a structured 'unmatched' dict if no org
-    owns the inbox or no PDF was attached, so SES retries don't loop.
+    Public endpoint (no API key) — caller must HMAC-sign the body with
+    the destination org's webhook_secret. We resolve the org via the
+    `to` field, so the body is parsed once before the signature check.
     """
     import base64
+
+    raw = await request.body()
+    signature = request.headers.get("x-triage-signature")
+    try:
+        payload = InboundEmail.model_validate_json(raw)
+    except Exception as e:
+        raise HTTPException(400, detail=f"Invalid JSON: {e}") from e
 
     pdfs = [a for a in payload.attachments if (a.content_type or "").lower() == "application/pdf"
             or a.filename.lower().endswith(".pdf")]
@@ -660,13 +687,15 @@ def inbound_email(payload: InboundEmail) -> TriageResult | dict:
         if org_row is None:
             logger.info("inbound_email.unmatched", extra={"to": payload.to})
             return {"status": "unmatched", "to": payload.to}
+        verify_signature(
+            secret=org_row.webhook_secret, body=raw, header=signature,
+        )
         org_id = org_row.id
 
     pdf_bytes = base64.b64decode(pdfs[0].content_base64)
     try:
         submission = DocAiParser().parse_bytes(pdf_bytes)
     except RuntimeError as e:
-        # DocAI not configured — record + skip; SES doesn't need a 5xx here.
         logger.warning("inbound_email.docai_unconfigured", extra={"err": str(e)})
         return {"status": "skipped", "reason": "DocAI not configured"}
 

@@ -43,6 +43,10 @@ class Org(Base):
     monthly_submission_quota: Mapped[int] = mapped_column(Integer, default=50)
     notification_webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     forward_inbox_address: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # HMAC secret used to sign /webhooks/inbound + /webhooks/email payloads
+    # destined for this org. Auto-generated on org creation; never null in
+    # practice — the column is nullable for migration safety on existing rows.
+    webhook_secret: Mapped[str | None] = mapped_column(String(96), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
     )

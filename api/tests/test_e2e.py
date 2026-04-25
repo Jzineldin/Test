@@ -89,8 +89,9 @@ def test_full_broker_workflow(client):
     assert sent["sent_at"] is not None
     provider_id = sent["provider_message_id"]
 
-    # 6. Carrier replies via inbound webhook
-    reply = client.post("/webhooks/inbound", json={
+    # 6. Carrier replies via inbound webhook (HMAC-signed)
+    from tests.conftest import signed_post
+    reply = signed_post(client, "/webhooks/inbound", {
         "provider_message_id": provider_id,
         "body": "Quoting at $42,500 effective 2026-06-01. Bind pending broker confirmation.",
     }).json()

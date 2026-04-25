@@ -100,7 +100,12 @@ class StubClient:
 
 
 class AnthropicClient:
-    """Real Claude via the Anthropic SDK."""
+    """Real Claude via the Anthropic SDK.
+
+    System prompts are flagged with `cache_control: ephemeral` so the
+    appetite-scorer's static instructions are prompt-cached across runs
+    — saves ~50% on input tokens once warm.
+    """
 
     def __init__(self, model: str = DEFAULT_MODEL) -> None:
         from anthropic import Anthropic  # imported lazily so stub-only runs don't need it
@@ -125,7 +130,11 @@ class AnthropicClient:
         msg = self._anthropic.messages.create(
             model=self.model,
             max_tokens=max_tokens,
-            system=system,
+            system=[{
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=[{"role": "user", "content": user}],
         )
         return "".join(block.text for block in msg.content if block.type == "text")
@@ -156,10 +165,16 @@ class BedrockClient:
             self._client = boto3.client("bedrock-runtime", region_name=self.region)
 
     def complete_text(self, system: str, user: str, *, max_tokens: int = 2048) -> str:
+        # Bedrock accepts the same Anthropic prompt-caching shape as the
+        # direct API: a list of system blocks each with cache_control.
         body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
-            "system": system,
+            "system": [{
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }],
             "messages": [{"role": "user", "content": user}],
         }
         response = self._client.invoke_model(

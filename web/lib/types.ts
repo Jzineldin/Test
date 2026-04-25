@@ -88,3 +88,12 @@ export interface TriageRunDetail extends TriageRunSummary {
   submission_json: unknown;
   result: TriageResult;
 }
+
+export interface DigestItem {
+  kind: "reply" | "bound" | "declined";
+  draft_id: number;
+  carrier_id: string;
+  insured_name: string;
+  when: string;
+  summary: string;
+}

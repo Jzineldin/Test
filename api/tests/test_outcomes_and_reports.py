@@ -77,7 +77,8 @@ def test_outcome_starts_null_until_reply(client):
 
 def test_inbound_reply_sets_outcome_pending(client):
     draft_id, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Quoting at $42k."})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quoting at $42k."})
     body = client.get(f"/drafts/{draft_id}", headers=HEADERS).json()
     assert body["outcome"] == "pending"
     assert body["quote_replied_at"] is not None
@@ -85,7 +86,8 @@ def test_inbound_reply_sets_outcome_pending(client):
 
 def test_outcome_promotes_to_bound_with_premium(client):
     draft_id, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Quote $42k"})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quote $42k"})
     r = client.post(
         f"/drafts/{draft_id}/outcome",
         json={"outcome": "bound", "bound_premium_cents": 4_200_000},
@@ -98,7 +100,8 @@ def test_outcome_promotes_to_bound_with_premium(client):
 
 def test_outcome_promotes_to_declined(client):
     draft_id, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Out of appetite"})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Out of appetite"})
     r = client.post(
         f"/drafts/{draft_id}/outcome",
         json={"outcome": "declined"},
@@ -129,7 +132,8 @@ def test_reports_summary_starts_zero(client):
 
 def test_reports_summary_reflects_full_flow(client):
     draft_id, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Quote $42k"})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quote $42k"})
     client.post(
         f"/drafts/{draft_id}/outcome",
         json={"outcome": "bound", "bound_premium_cents": 4_200_000},
@@ -167,7 +171,8 @@ def test_inbound_fires_notification_when_org_has_webhook(env, client, monkeypatc
     monkeypatch.setattr(env, "get_client_for_url", fake_get_client_for_url)
 
     _, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Quote $42k"})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quote $42k"})
 
     assert sent == ["https://hooks.slack.com/services/T/B/X"]
     assert len(stub.outbox) == 1
@@ -180,6 +185,7 @@ def test_inbound_no_webhook_no_notification(env, client, monkeypatch):
     monkeypatch.setattr(env, "get_client_for_url", lambda url: calls.append(url) or None)
 
     _, pid = _seed_full_flow(client)
-    client.post("/webhooks/inbound", json={"provider_message_id": pid, "body": "Quote $42k"})
+    from tests.conftest import signed_post
+    signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quote $42k"})
 
     assert calls == []

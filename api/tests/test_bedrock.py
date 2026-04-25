@@ -53,7 +53,13 @@ def test_invoke_model_payload_uses_bedrock_messages_shape():
     body = json.loads(fake.last_call["body"])
     assert body["anthropic_version"] == "bedrock-2023-05-31"
     assert body["max_tokens"] == 128
-    assert body["system"] == "S"
+    # System is a list of blocks with cache_control set so Anthropic /
+    # Bedrock prompt-cache the static instructions across runs.
+    assert body["system"] == [{
+        "type": "text",
+        "text": "S",
+        "cache_control": {"type": "ephemeral"},
+    }]
     assert body["messages"] == [{"role": "user", "content": "U"}]
 
 
