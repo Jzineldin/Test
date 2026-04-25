@@ -89,6 +89,7 @@ _cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -217,13 +218,17 @@ def auth_verify(body: VerifyRequest, response: "Response") -> VerifyResponse:
         user_id = user.id
         user_email = user.email
 
+    cookie_secure = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+    # Cross-site cookie (dashboard on appetitematch.com → api on
+    # onrender.com) requires SameSite=None + Secure. Fall back to Lax
+    # locally so dev over plain HTTP still works.
     response.set_cookie(
         key=COOKIE_NAME,
         value=secret,
         max_age=int(SESSION_TTL.total_seconds()),
         httponly=True,
-        samesite="lax",
-        secure=os.environ.get("COOKIE_SECURE", "false").lower() == "true",
+        samesite="none" if cookie_secure else "lax",
+        secure=cookie_secure,
     )
     return VerifyResponse(user_id=user_id, user_email=user_email, org_slug=org_slug)
 

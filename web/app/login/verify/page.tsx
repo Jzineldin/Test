@@ -17,17 +17,23 @@ function VerifyInner() {
       return;
     }
     (async () => {
-      const res = await fetch(`${API_URL}/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        setError(`Could not verify: ${res.status}. Request a fresh link.`);
-        return;
+      try {
+        const res = await fetch(`${API_URL}/auth/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+          credentials: "include",
+        });
+        if (!res.ok) {
+          setError(`Could not verify: ${res.status}. Request a fresh link.`);
+          return;
+        }
+        router.replace("/app");
+      } catch (e) {
+        setError(
+          `Network error: ${e instanceof Error ? e.message : String(e)}. Request a fresh link.`,
+        );
       }
-      router.replace("/app");
     })();
   }, [token, router]);
 
