@@ -92,7 +92,10 @@ Inbound (PDF upload / JSON / email)
 | Name                          | What it enables                                        |
 |-------------------------------|--------------------------------------------------------|
 | `DATABASE_URL`                | Postgres connection (defaults to local SQLite)         |
-| `ANTHROPIC_API_KEY`           | Real Claude (otherwise StubClient)                     |
+| `AWS_ACCESS_KEY_ID` + secret  | Activates Bedrock LLM (preferred when on AWS)          |
+| `BEDROCK_MODEL_ID`            | Override default `us.anthropic.claude-sonnet-4-6`      |
+| `LLM_PROVIDER`                | `bedrock` or `anthropic` to force one (default: auto)  |
+| `ANTHROPIC_API_KEY`           | Real Claude direct (used if Bedrock isn't configured)  |
 | `GCP_PROJECT_ID`              | DocAI parsing (combined with the next two)             |
 | `DOCAI_PROCESSOR_ID`          | DocAI processor id (Form Parser)                       |
 | `DOCAI_LOCATION`              | DocAI region (`us` or `eu`)                            |
