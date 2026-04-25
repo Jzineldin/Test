@@ -253,7 +253,7 @@ export default function Home() {
       </section>
 
       {report && <ReportStrip report={report} />}
-      <History history={history} onOpen={openHistoryRun} />
+      <History history={history} onOpen={openHistoryRun} apiKey={apiKey} />
     </main>
   );
 }
@@ -310,16 +310,41 @@ function ReportStrip({ report }: { report: ReportPayload }) {
 function History({
   history,
   onOpen,
+  apiKey,
 }: {
   history: TriageRunSummary[];
   onOpen: (id: number) => void;
+  apiKey: string;
 }) {
   if (history.length === 0) return null;
+
+  function downloadCsv() {
+    // Trigger an authed download via a temporary anchor + fetch.
+    fetch(`${API_URL}/history/export.csv`, { headers: authHeaders(apiKey) })
+      .then((r) => r.blob())
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "triage-history.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+  }
+
   return (
     <section className="mt-12 border-t border-slate-800 pt-8">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Recent triage runs ({history.length})
-      </h2>
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+          Recent triage runs ({history.length})
+        </h2>
+        <button
+          onClick={downloadCsv}
+          className="rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-900"
+        >
+          Export CSV
+        </button>
+      </div>
       <div className="overflow-hidden rounded-md border border-slate-800">
         <table className="w-full text-sm">
           <thead className="bg-slate-900 text-left text-slate-400">
