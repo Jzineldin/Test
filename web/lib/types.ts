@@ -24,3 +24,19 @@ export interface TriageResult {
   drafted_emails: DraftedEmail[];
   summary: string;
 }
+
+export interface TriageRunSummary {
+  id: number;
+  submission_id: string;
+  insured_name: string;
+  primary_state: string;
+  match_count: number;
+  draft_count: number;
+  created_at: string;
+}
+
+export interface TriageRunDetail extends TriageRunSummary {
+  summary: string;
+  submission_json: unknown;
+  result: TriageResult;
+}

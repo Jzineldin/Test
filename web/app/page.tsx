@@ -1,8 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
-import type { TriageResult } from "@/lib/types";
+import type {
+  TriageResult,
+  TriageRunDetail,
+  TriageRunSummary,
+} from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 type Mode = "pdf" | "json";
@@ -16,6 +20,20 @@ export default function Home() {
   const [result, setResult] = useState<TriageResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<TriageRunSummary[]>([]);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/history?limit=20`);
+      if (res.ok) setHistory((await res.json()) as TriageRunSummary[]);
+    } catch {
+      /* history is best-effort; ignore failures */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   async function runTriage() {
     setLoading(true);
@@ -25,10 +43,25 @@ export default function Home() {
       const res = mode === "pdf" ? await uploadPdf() : await postJson();
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       setResult((await res.json()) as TriageResult);
+      loadHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function openHistoryRun(runId: number) {
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/history/${runId}`);
+      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+      const detail = (await res.json()) as TriageRunDetail;
+      setResult(detail.result);
+      setSubmissionJson(JSON.stringify(detail.submission_json, null, 2));
+      setMode("json");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -131,7 +164,67 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <History history={history} onOpen={openHistoryRun} />
     </main>
+  );
+}
+
+function History({
+  history,
+  onOpen,
+}: {
+  history: TriageRunSummary[];
+  onOpen: (id: number) => void;
+}) {
+  if (history.length === 0) return null;
+  return (
+    <section className="mt-12 border-t border-slate-800 pt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
+        Recent triage runs ({history.length})
+      </h2>
+      <div className="overflow-hidden rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-900 text-left text-slate-400">
+            <tr>
+              <th className="px-3 py-2 font-medium">When</th>
+              <th className="px-3 py-2 font-medium">Insured</th>
+              <th className="px-3 py-2 font-medium">State</th>
+              <th className="px-3 py-2 text-right font-medium">Matches</th>
+              <th className="px-3 py-2 text-right font-medium">Drafts</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((row) => (
+              <tr key={row.id} className="border-t border-slate-800">
+                <td className="px-3 py-2 text-slate-400">
+                  {new Date(row.created_at).toLocaleString()}
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-200">
+                  {row.insured_name}
+                </td>
+                <td className="px-3 py-2 text-slate-300">{row.primary_state}</td>
+                <td className="px-3 py-2 text-right text-slate-300">
+                  {row.match_count}
+                </td>
+                <td className="px-3 py-2 text-right text-slate-300">
+                  {row.draft_count}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    onClick={() => onOpen(row.id)}
+                    className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-900"
+                  >
+                    Open
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
