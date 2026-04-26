@@ -1682,6 +1682,21 @@ def carriers_export_csv(org: CurrentOrg = Depends(current_org)):
     )
 
 
+@app.get("/carriers/{carrier_id}", response_model=Carrier)
+def get_carrier_endpoint(
+    carrier_id: str, org: CurrentOrg = Depends(current_org),
+) -> Carrier:
+    """Fetch a single carrier by id - useful for AMS integrations that
+    want to verify an appetite rule or refresh local cache.
+
+    Registered after /carriers/export.csv so the path param doesn't
+    swallow the static export route."""
+    for c in _org_carriers(org.id):
+        if c.carrier_id == carrier_id:
+            return c
+    raise HTTPException(404, detail=f"Carrier {carrier_id!r} not found")
+
+
 @app.get("/history/export.csv")
 def history_export_csv(org: CurrentOrg = Depends(current_org)):
     """Stream the period's history as CSV - accounting / leadership reports."""

@@ -80,6 +80,17 @@ def test_delete_removes_the_carrier(client):
     assert "test_carrier" not in {c["carrier_id"] for c in listed}
 
 
+def test_get_single_carrier_returns_payload(client):
+    client.post("/carriers", json=_sample_carrier(), headers=HEADERS)
+    r = client.get("/carriers/test_carrier", headers=HEADERS)
+    assert r.status_code == 200
+    assert r.json()["carrier_id"] == "test_carrier"
+
+
+def test_get_unknown_carrier_404(client):
+    assert client.get("/carriers/nope", headers=HEADERS).status_code == 404
+
+
 def test_delete_unknown_carrier_returns_404(client):
     r = client.delete("/carriers/never_existed", headers=HEADERS)
     assert r.status_code == 404
