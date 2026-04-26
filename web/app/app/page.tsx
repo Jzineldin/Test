@@ -423,7 +423,6 @@ export default function Home() {
 
           {result && (
             <>
-              <DocAiGaps result={result} />
               <Matches matches={result.matches} summary={result.summary} />
               <DraftedEmails
                 drafts={result.drafted_emails}
@@ -1235,14 +1234,6 @@ function JsonEditor({
       </div>
     </div>
   );
-}
-
-function DocAiGaps({ result }: { result: TriageResult }) {
-  // Surfaced via extra.docai_gaps; the API doesn't currently echo extra back
-  // through the TriageResult model, so this is a no-op until we extend it.
-  // Placeholder retained so the dashboard structure is in place.
-  void result;
-  return null;
 }
 
 function Matches({
