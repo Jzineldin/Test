@@ -48,6 +48,7 @@ export default function Home() {
     JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2),
   );
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [extraFiles, setExtraFiles] = useState<File[]>([]);
   const [result, setResult] = useState<TriageResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -345,6 +346,7 @@ export default function Home() {
     if (!pdfFile) throw new Error("Drop or pick an ACORD PDF first.");
     const form = new FormData();
     form.append("file", pdfFile);
+    for (const f of extraFiles) form.append("extras", f);
     return fetch(`${API_URL}/triage/upload`, {
       method: "POST",
       credentials: "include",
@@ -515,7 +517,10 @@ export default function Home() {
                   {loading ? "Parsing…" : "Parse only"}
                 </button>
                 <button
-                  onClick={() => setPdfFile(null)}
+                  onClick={() => {
+                    setPdfFile(null);
+                    setExtraFiles([]);
+                  }}
                   className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
                 >
                   Clear file
@@ -523,6 +528,10 @@ export default function Home() {
               </>
             )}
           </div>
+
+          {mode === "pdf" && pdfFile && (
+            <ExtraAttachments files={extraFiles} onChange={setExtraFiles} />
+          )}
 
           <p className="mt-3 text-xs text-slate-500">
             POSTs to{" "}
@@ -1335,6 +1344,77 @@ function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void 
           {m === "pdf" ? "Upload ACORD PDF" : "Paste JSON"}
         </button>
       ))}
+    </div>
+  );
+}
+
+function ExtraAttachments({
+  files,
+  onChange,
+}: {
+  files: File[];
+  onChange: (next: File[]) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="mt-3 rounded-md border border-slate-800 bg-slate-950 p-3 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-slate-400">
+          Extra attachments (loss runs, dec page, etc.)
+        </p>
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          className="rounded-md border border-slate-700 px-2 py-1 text-slate-300 hover:bg-slate-900"
+        >
+          + Add PDF
+        </button>
+        <input
+          ref={ref}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []).filter((f) =>
+              f.name.toLowerCase().endsWith(".pdf"),
+            );
+            onChange([...files, ...picked]);
+            e.target.value = "";
+          }}
+        />
+      </div>
+      {files.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {files.map((f, i) => (
+            <li
+              key={`${f.name}-${i}`}
+              className="flex items-center justify-between gap-2 rounded border border-slate-800 bg-slate-900/40 px-2 py-1"
+            >
+              <span className="truncate text-slate-300">
+                {f.name}{" "}
+                <span className="text-slate-500">
+                  ({(f.size / 1024).toFixed(0)} KB)
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(files.filter((_, j) => j !== i))}
+                className="text-slate-500 hover:text-rose-300"
+                aria-label={`Remove ${f.name}`}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {files.length === 0 && (
+        <p className="mt-2 text-[11px] text-slate-600">
+          Optional. These attachments are listed in the carrier's draft email
+          alongside the ACORD.
+        </p>
+      )}
     </div>
   );
 }
