@@ -7,6 +7,7 @@ export default function Landing() {
       <Hero />
       <Problem />
       <HowItWorks />
+      <Comparison />
       <Pricing />
       <Footer />
     </div>
@@ -182,6 +183,104 @@ const STEPS = [
     body: "A custom cover email is drafted for each viable carrier, leading with the facts that matter to their appetite. You review, click send, and we track the quote-back.",
   },
 ];
+
+function Comparison() {
+  return (
+    <section className="border-t border-slate-800">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          Why not just use ChatGPT?
+        </h2>
+        <p className="mt-2 max-w-2xl text-slate-400">
+          Real answer: ChatGPT can score one submission against a carrier you
+          paste in. It can't run the workflow. Here's what the difference
+          looks like at 200 submissions a month.
+        </p>
+        <div className="mt-12 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="text-xs uppercase tracking-widest text-slate-500">
+              <tr>
+                <th className="py-3 pr-6"></th>
+                <th className="py-3 pr-6">ChatGPT / Claude.ai</th>
+                <th className="py-3 pr-6">Your AMS alone</th>
+                <th className="py-3 pr-6 text-emerald-400">AppetiteMatch</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              {COMPARISON_ROWS.map((r) => (
+                <tr key={r.label} className="border-t border-slate-900">
+                  <td className="py-3 pr-6 font-medium text-slate-100">
+                    {r.label}
+                  </td>
+                  <td className="py-3 pr-6 text-slate-400">{r.chatgpt}</td>
+                  <td className="py-3 pr-6 text-slate-400">{r.ams}</td>
+                  <td className="py-3 pr-6 text-emerald-300">{r.us}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-8 text-sm text-slate-500">
+          The agentic LLM is the easy part. The structured carrier appetite
+          DB, the org-scoped audit log, the SES outbound with PDF attached,
+          the per-org pipeline view — that's where AppetiteMatch lives.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+const COMPARISON_ROWS = [
+  {
+    label: "Reads ACORD PDFs",
+    chatgpt: "Yes (slow, no validation)",
+    ams: "No",
+    us: "Yes — Document AI form parser",
+  },
+  {
+    label: "Carrier appetite DB",
+    chatgpt: "You paste it every time",
+    ams: "Static, often stale",
+    us: "Per-org, editable, versioned",
+  },
+  {
+    label: "Drafted carrier emails",
+    chatgpt: "Yes, but generic",
+    ams: "Templates only",
+    us: "Carrier-specific, reads each carrier's appetite",
+  },
+  {
+    label: "Sends + tracks outbound",
+    chatgpt: "No",
+    ams: "Manual",
+    us: "SES with PDF attached, reply tracked to draft",
+  },
+  {
+    label: "Quote-back pipeline",
+    chatgpt: "No",
+    ams: "Spreadsheet",
+    us: "Inbox view, bind/decline outcomes",
+  },
+  {
+    label: "Audit log for E&O",
+    chatgpt: "No",
+    ams: "Sometimes",
+    us: "Every state change, exportable",
+  },
+  {
+    label: "Multi-user org",
+    chatgpt: "No",
+    ams: "Yes (seat-priced)",
+    us: "Yes, magic-link login",
+  },
+  {
+    label: "Time per submission",
+    chatgpt: "10–15 min",
+    ams: "30–90 min",
+    us: "20 seconds + review",
+  },
+];
+
 
 function Pricing() {
   return (
