@@ -245,6 +245,41 @@ export default function Home() {
     }
   }
 
+  async function editDraft(
+    draftId: number,
+    patch: { subject?: string; body?: string },
+  ) {
+    setError(null);
+    const res = await fetch(`${API_URL}/drafts/${draftId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const msg = `Edit failed: ${res.status} ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
+      return;
+    }
+    const updated = (await res.json()) as {
+      id: number; subject: string; body: string;
+    };
+    setResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            drafted_emails: prev.drafted_emails.map((d) =>
+              d.id === updated.id
+                ? { ...d, subject: updated.subject, body: updated.body }
+                : d,
+            ),
+          }
+        : prev,
+    );
+    toast.push("Draft updated", "success");
+  }
+
   async function setOutcome(
     draftId: number,
     outcome: "bound" | "declined",
@@ -524,6 +559,7 @@ export default function Home() {
                 drafts={result.drafted_emails}
                 onSend={sendDraft}
                 onOutcome={setOutcome}
+                onEdit={editDraft}
               />
             </>
           )}
@@ -1836,14 +1872,48 @@ function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
   );
 }
 
+function CopyDraftButton({
+  subject,
+  body,
+  to,
+}: {
+  subject: string;
+  body: string;
+  to: string;
+}) {
+  const toast = useToast();
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        const text = `To: ${to}\nSubject: ${subject}\n\n${body}`;
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+          toast.push("Email copied to clipboard.", "success");
+        } catch {
+          toast.push("Copy failed.", "error");
+        }
+      }}
+      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
 function DraftedEmails({
   drafts,
   onSend,
   onOutcome,
+  onEdit,
 }: {
   drafts: TriageResult["drafted_emails"];
   onSend: (id: number) => void;
   onOutcome: (id: number, outcome: "bound" | "declined", premiumCents?: number) => void;
+  onEdit?: (id: number, patch: { subject?: string; body?: string }) => Promise<void>;
 }) {
   const unsent = drafts.filter((d) => d.id != null && !d.sent_at);
   return (
@@ -1876,93 +1946,196 @@ function DraftedEmails({
           const isBound = d.outcome === "bound";
           const isDeclined = d.outcome === "declined";
           return (
-            <article
+            <DraftCard
               key={d.carrier_id}
-              className="rounded-md border border-slate-800 bg-slate-950 p-4"
-            >
-              <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-slate-400">
-                <span>To: <span className="text-slate-200">{d.to}</span></span>
-                {d.attachments.length > 0 && (
-                  <span>Attach: {d.attachments.join(", ")}</span>
-                )}
-                {isSent && (
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
-                    ✓ sent {new Date(d.sent_at!).toLocaleString()}
-                  </span>
-                )}
-                {hasReply && (
-                  <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300">
-                    ↩ replied {new Date(d.quote_replied_at!).toLocaleString()}
-                  </span>
-                )}
-                {isBound && (
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
-                    ★ BOUND
-                    {d.bound_premium_cents != null &&
-                      ` · $${(d.bound_premium_cents / 100).toLocaleString()}`}
-                  </span>
-                )}
-                {isDeclined && (
-                  <span className="rounded-full bg-slate-700/40 px-2 py-0.5 text-slate-400">
-                    declined
-                  </span>
-                )}
-              </div>
-              <p className="mb-3 text-sm font-semibold text-slate-100">{d.subject}</p>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-300">
-                {d.body}
-              </pre>
-              {hasReply && d.quote_reply_body && (
-                <div className="mt-4 rounded-md border border-sky-800 bg-sky-500/5 p-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-sky-300">
-                    Carrier reply
-                  </p>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-200">
-                    {d.quote_reply_body}
-                  </pre>
-                </div>
-              )}
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => d.id && onSend(d.id)}
-                  disabled={!d.id || isSent}
-                  className={
-                    "rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed " +
-                    (isSent
-                      ? "border border-emerald-700 bg-transparent text-emerald-400"
-                      : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:opacity-50")
-                  }
-                >
-                  {isSent ? "Sent" : "Send to carrier"}
-                </button>
-                {isSent && d.id && (
-                  <>
-                    <span className="ml-2 text-xs text-slate-500">Outcome:</span>
-                    <button
-                      onClick={() => {
-                        const raw = prompt("Bound premium ($):");
-                        if (raw == null) return;
-                        const cents = Math.round(parseFloat(raw) * 100);
-                        if (!Number.isFinite(cents)) return;
-                        onOutcome(d.id!, "bound", cents);
-                      }}
-                      className="rounded-md border border-emerald-700 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20"
-                    >
-                      Mark bound
-                    </button>
-                    <button
-                      onClick={() => onOutcome(d.id!, "declined")}
-                      className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-                    >
-                      Mark declined
-                    </button>
-                  </>
-                )}
-              </div>
-            </article>
+              draft={d}
+              isSent={isSent}
+              hasReply={hasReply}
+              isBound={isBound}
+              isDeclined={isDeclined}
+              onSend={onSend}
+              onOutcome={onOutcome}
+              onEdit={onEdit}
+            />
           );
         })}
       </div>
     </section>
+  );
+}
+
+function DraftCard({
+  draft: d,
+  isSent,
+  hasReply,
+  isBound,
+  isDeclined,
+  onSend,
+  onOutcome,
+  onEdit,
+}: {
+  draft: TriageResult["drafted_emails"][number];
+  isSent: boolean;
+  hasReply: boolean;
+  isBound: boolean;
+  isDeclined: boolean;
+  onSend: (id: number) => void;
+  onOutcome: (id: number, outcome: "bound" | "declined", premiumCents?: number) => void;
+  onEdit?: (id: number, patch: { subject?: string; body?: string }) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftSubject, setDraftSubject] = useState(d.subject);
+  const [draftBody, setDraftBody] = useState(d.body);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraftSubject(d.subject);
+    setDraftBody(d.body);
+    setEditing(true);
+  }
+
+  async function save() {
+    if (!d.id || !onEdit) return;
+    setSaving(true);
+    try {
+      const patch: { subject?: string; body?: string } = {};
+      if (draftSubject !== d.subject) patch.subject = draftSubject;
+      if (draftBody !== d.body) patch.body = draftBody;
+      if (Object.keys(patch).length > 0) await onEdit(d.id, patch);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="rounded-md border border-slate-800 bg-slate-950 p-4">
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-slate-400">
+        <span>To: <span className="text-slate-200">{d.to}</span></span>
+        {d.attachments.length > 0 && (
+          <span>Attach: {d.attachments.join(", ")}</span>
+        )}
+        {isSent && (
+          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
+            ✓ sent {new Date(d.sent_at!).toLocaleString()}
+          </span>
+        )}
+        {hasReply && (
+          <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300">
+            ↩ replied {new Date(d.quote_replied_at!).toLocaleString()}
+          </span>
+        )}
+        {isBound && (
+          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
+            ★ BOUND
+            {d.bound_premium_cents != null &&
+              ` · $${(d.bound_premium_cents / 100).toLocaleString()}`}
+          </span>
+        )}
+        {isDeclined && (
+          <span className="rounded-full bg-slate-700/40 px-2 py-0.5 text-slate-400">
+            declined
+          </span>
+        )}
+      </div>
+      {editing ? (
+        <>
+          <input
+            value={draftSubject}
+            onChange={(e) => setDraftSubject(e.target.value)}
+            className="mb-3 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 focus:border-emerald-500 focus:outline-none"
+          />
+          <textarea
+            value={draftBody}
+            onChange={(e) => setDraftBody(e.target.value)}
+            rows={Math.min(24, draftBody.split("\n").length + 1)}
+            className="block w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-sans text-sm leading-relaxed text-slate-200 focus:border-emerald-500 focus:outline-none"
+          />
+        </>
+      ) : (
+        <>
+          <p className="mb-3 text-sm font-semibold text-slate-100">{d.subject}</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-300">
+            {d.body}
+          </pre>
+        </>
+      )}
+      {hasReply && d.quote_reply_body && (
+        <div className="mt-4 rounded-md border border-sky-800 bg-sky-500/5 p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-sky-300">
+            Carrier reply
+          </p>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-200">
+            {d.quote_reply_body}
+          </pre>
+        </div>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {editing ? (
+          <>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save edits"}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => d.id && onSend(d.id)}
+              disabled={!d.id || isSent}
+              className={
+                "rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed " +
+                (isSent
+                  ? "border border-emerald-700 bg-transparent text-emerald-400"
+                  : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:opacity-50")
+              }
+            >
+              {isSent ? "Sent" : "Send to carrier"}
+            </button>
+            {!isSent && onEdit && d.id != null && (
+              <button
+                onClick={startEdit}
+                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+              >
+                Edit
+              </button>
+            )}
+            <CopyDraftButton subject={d.subject} body={d.body} to={d.to} />
+            {isSent && d.id && (
+              <>
+                <span className="ml-2 text-xs text-slate-500">Outcome:</span>
+                <button
+                  onClick={() => {
+                    const raw = prompt("Bound premium ($):");
+                    if (raw == null) return;
+                    const cents = Math.round(parseFloat(raw) * 100);
+                    if (!Number.isFinite(cents)) return;
+                    onOutcome(d.id!, "bound", cents);
+                  }}
+                  className="rounded-md border border-emerald-700 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20"
+                >
+                  Mark bound
+                </button>
+                <button
+                  onClick={() => onOutcome(d.id!, "declined")}
+                  className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+                >
+                  Mark declined
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </article>
   );
 }
