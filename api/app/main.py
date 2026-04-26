@@ -1340,6 +1340,49 @@ async def inbound_email(request: Request) -> TriageResult | dict:
     return _run_and_persist(submission, org_id=org_id)
 
 
+@app.get("/carriers/export.csv")
+def carriers_export_csv(org: CurrentOrg = Depends(current_org)):
+    """Stream the org's carrier directory as CSV. Round-trip with the
+    same header that /carriers/bulk + the dashboard CSV importer accept,
+    so an export -> edit-in-Excel -> re-import flow is lossless."""
+    import csv
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "carrier_id", "name", "submission_email",
+        "typical_quote_back_days", "naics_prefixes",
+        "states_in", "states_out", "lines",
+        "revenue_min", "revenue_max", "notes",
+    ])
+    for c in _org_carriers(org.id):
+        for r in c.appetite or [None]:
+            writer.writerow([
+                c.carrier_id, c.name, c.submission_email,
+                c.typical_quote_back_days,
+                ";".join(r.naics_prefixes) if r else "",
+                ";".join(r.states_in) if r else "",
+                ";".join(r.states_out) if r else "",
+                ";".join(l.value for l in r.lines) if r else "",
+                str(r.revenue_min) if r and r.revenue_min is not None else "",
+                str(r.revenue_max) if r and r.revenue_max is not None else "",
+                (r.notes if r else None) or c.notes or "",
+            ])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="carriers-{org.slug}.csv"'
+            ),
+        },
+    )
+
+
 @app.get("/history/export.csv")
 def history_export_csv(org: CurrentOrg = Depends(current_org)):
     """Stream the period's history as CSV - accounting / leadership reports."""

@@ -128,3 +128,20 @@ def test_org_carriers_are_isolated(client, monkeypatch, tmp_path):
     other_ids = {c["carrier_id"] for c in other_listed}
     # Other org gets the seeded sample carriers, NOT demo's test_carrier.
     assert "test_carrier" not in other_ids
+
+
+def test_export_csv_round_trips_with_bulk_import(client):
+    payload = _sample_carrier()
+    payload["appetite"][0]["states_in"] = ["TX", "FL"]
+    payload["appetite"][0]["lines"] = ["general_liability", "commercial_auto"]
+    client.post("/carriers", json=payload, headers=HEADERS)
+
+    r = client.get("/carriers/export.csv", headers=HEADERS)
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    body = r.text
+    assert "carrier_id,name,submission_email" in body
+    assert "test_carrier" in body
+    # Multi-value cells use semicolon to round-trip with the importer.
+    assert "TX;FL" in body
+    assert "general_liability;commercial_auto" in body

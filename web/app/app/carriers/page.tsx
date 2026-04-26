@@ -22,6 +22,7 @@ export default function CarriersPage() {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [editing, setEditing] = useState<Carrier | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     setApiKey(localStorage.getItem(API_KEY_STORAGE) ?? "");
@@ -140,6 +141,22 @@ export default function CarriersPage() {
     reload();
   }
 
+  const filteredCarriers = (() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return carriers;
+    return carriers.filter((c) => {
+      if (c.name.toLowerCase().includes(q)) return true;
+      if (c.carrier_id.toLowerCase().includes(q)) return true;
+      if (c.submission_email.toLowerCase().includes(q)) return true;
+      for (const r of c.appetite) {
+        if (r.naics_prefixes.some((p) => p.toLowerCase().includes(q))) return true;
+        if (r.states_in.some((s) => s.toLowerCase().includes(q))) return true;
+        if (r.lines.some((l) => l.toLowerCase().includes(q))) return true;
+      }
+      return false;
+    });
+  })();
+
   if (!authChecked) {
     return (
       <main className="flex min-h-screen items-center justify-center text-sm text-slate-400">
@@ -174,6 +191,12 @@ export default function CarriersPage() {
               }}
             />
           </label>
+          <a
+            href={`${API_URL}/carriers/export.csv`}
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Export CSV
+          </a>
           <button
             onClick={() => setEditing(blankCarrier())}
             className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-emerald-400"
@@ -218,8 +241,23 @@ export default function CarriersPage() {
         />
       )}
 
+      {carriers.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name, ID, email, NAICS, or state…"
+            className="flex-1 min-w-0 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-emerald-600 focus:outline-none"
+          />
+          <span className="shrink-0 text-xs text-slate-500">
+            {filteredCarriers.length} of {carriers.length}
+          </span>
+        </div>
+      )}
+
       <ul className="space-y-3">
-        {carriers.map((c) => (
+        {filteredCarriers.map((c) => (
           <li
             key={c.carrier_id}
             className="rounded-md border border-slate-800 bg-slate-950 p-4"
@@ -295,6 +333,17 @@ export default function CarriersPage() {
       {carriers.length === 0 && !editing && (
         <p className="rounded-md border border-dashed border-slate-800 p-6 text-center text-sm text-slate-500">
           No carriers yet. Click <strong>+ New carrier</strong> to add one.
+        </p>
+      )}
+      {carriers.length > 0 && filteredCarriers.length === 0 && (
+        <p className="rounded-md border border-dashed border-slate-800 p-6 text-center text-sm text-slate-500">
+          No carriers match <span className="text-slate-300">{query}</span>.
+          <button
+            onClick={() => setQuery("")}
+            className="ml-2 text-emerald-400 hover:underline"
+          >
+            Clear
+          </button>
         </p>
       )}
       </div>
