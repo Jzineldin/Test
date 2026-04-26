@@ -47,6 +47,8 @@ export const RELEASES: Release[] = [
       "**Multi-attachment uploads** - /triage/upload accepts an `extras` list (loss runs, dec page, etc.). UI shows them in a removable list under the primary ACORD dropzone.",
       "**Team role change** - inline admin/csr dropdown on each user, last-admin-protected.",
       "**LLM summary callout** - the per-triage one-line summary is now shown above the matches table.",
+      "**Real fix: phantom attachments.** Loss runs / dec pages uploaded alongside the ACORD now actually ride along on outbound carrier emails. Previously the cover letter listed them but SES only sent the primary PDF. Inbound email path also stashes all PDFs.",
+      "**Rate limits** on /carriers/check (60/min) and /triage/parse-only (30/min, same as /triage).",
     ],
   },
   {
