@@ -1454,6 +1454,15 @@ async def inbound_email(request: Request) -> TriageResult | dict:
             secret=org_row.webhook_secret, body=raw, header=signature,
         )
         org_id = org_row.id
+        record_audit_event(
+            session, org_id=org_id, event_type="inbound_email.received",
+            actor=payload.from_address,
+            details={
+                "to": payload.to,
+                "subject": payload.subject or "",
+                "attachment_count": len(payload.attachments),
+            },
+        )
 
     pdf_bytes = base64.b64decode(pdfs[0].content_base64)
     try:
@@ -1462,8 +1471,18 @@ async def inbound_email(request: Request) -> TriageResult | dict:
         logger.warning("inbound_email.docai_unconfigured", extra={"err": str(e)})
         return {"status": "skipped", "reason": "DocAI not configured"}
 
+    # Pass through ALL attachments (loss runs, dec pages, etc.) so they
+    # flow into the carrier-bound email - carriers want the full packet.
+    pdf_filename = pdfs[0].filename or "submission.pdf"
+    extra_pdf_names = [a.filename for a in pdfs[1:]]
     submission.retail_agent_email = payload.from_address
-    return _run_and_persist(submission, org_id=org_id)
+    return _run_and_persist(
+        submission,
+        org_id=org_id,
+        attachments=[pdf_filename, *extra_pdf_names],
+        submission_pdf=pdf_bytes,
+        submission_pdf_filename=pdf_filename,
+    )
 
 
 @app.get("/carriers/export.csv")

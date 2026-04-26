@@ -513,6 +513,12 @@ export default function Home() {
 
           {result && (
             <>
+              <PriorRuns
+                currentRunId={history[0]?.id}
+                currentInsured={history[0]?.insured_name}
+                history={history}
+                onOpen={openHistoryRun}
+              />
               <Matches matches={result.matches} summary={result.summary} />
               <DraftedEmails
                 drafts={result.drafted_emails}
@@ -1483,6 +1489,52 @@ function JsonEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+function PriorRuns({
+  currentRunId,
+  currentInsured,
+  history,
+  onOpen,
+}: {
+  currentRunId: number | undefined;
+  currentInsured: string | undefined;
+  history: TriageRunSummary[];
+  onOpen: (id: number) => void;
+}) {
+  if (!currentInsured) return null;
+  const needle = currentInsured.trim().toLowerCase();
+  const prior = history.filter(
+    (r) => r.id !== currentRunId && r.insured_name.trim().toLowerCase() === needle,
+  );
+  if (prior.length === 0) return null;
+  return (
+    <section className="mb-6 rounded-md border border-sky-700 bg-sky-500/5 p-4">
+      <p className="text-sm font-medium text-sky-200">
+        {prior.length === 1
+          ? "1 prior triage on this insured"
+          : `${prior.length} prior triages on this insured`}{" "}
+        <span className="text-sky-400/80">- looks like a renewal.</span>
+      </p>
+      <ul className="mt-2 space-y-1 text-xs text-sky-300">
+        {prior.slice(0, 5).map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3">
+            <span className="truncate">
+              {new Date(r.created_at).toLocaleDateString()} ·{" "}
+              {r.match_count} match{r.match_count === 1 ? "" : "es"} ·{" "}
+              {r.draft_count} draft{r.draft_count === 1 ? "" : "s"}
+            </span>
+            <button
+              onClick={() => onOpen(r.id)}
+              className="shrink-0 rounded border border-sky-700/60 px-2 py-0.5 text-[11px] text-sky-200 hover:bg-sky-500/10"
+            >
+              Open
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
