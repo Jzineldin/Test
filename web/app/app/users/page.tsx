@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { DashboardHeader } from "@/components/DashboardChrome";
+import { useToast } from "@/components/Toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_KEY_STORAGE = "submission-triage-api-key";
@@ -23,6 +24,7 @@ function authHeaders(apiKey: string): HeadersInit {
 
 export default function UsersPage() {
   const router = useRouter();
+  const toast = useToast();
   const [apiKey, setApiKey] = useState("");
   const [authChecked, setAuthChecked] = useState(false);
   const [me, setMe] = useState<{ user_role?: string } | null>(null);
@@ -94,12 +96,15 @@ export default function UsersPage() {
         }),
       });
       if (!res.ok) {
-        setError(`Invite failed: ${res.status} ${await res.text()}`);
+        const msg = `Invite failed: ${res.status} ${await res.text()}`;
+        setError(msg);
+        toast.push(msg, "error");
         return;
       }
       setInvitedAt(new Date().toLocaleTimeString());
       setInviteEmail("");
       setInviteName("");
+      toast.push(`Invite sent to ${inviteEmail}`, "success");
       reload();
     } finally {
       setBusy(false);
@@ -114,9 +119,12 @@ export default function UsersPage() {
       headers: authHeaders(apiKey),
     });
     if (!res.ok) {
-      setError(`Remove failed: ${res.status} ${await res.text()}`);
+      const msg = `Remove failed: ${res.status} ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
       return;
     }
+    toast.push(`Removed ${u.email}`, "success");
     reload();
   }
 

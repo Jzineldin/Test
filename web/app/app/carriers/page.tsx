@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Carrier, CarrierAppetiteRule } from "@/lib/types";
 import { DashboardHeader } from "@/components/DashboardChrome";
+import { useToast } from "@/components/Toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_KEY_STORAGE = "submission-triage-api-key";
@@ -15,6 +16,7 @@ function authHeaders(apiKey: string): HeadersInit {
 
 export default function CarriersPage() {
   const router = useRouter();
+  const toast = useToast();
   const [apiKey, setApiKey] = useState("");
   const [authChecked, setAuthChecked] = useState(false);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -70,10 +72,13 @@ export default function CarriersPage() {
       body: JSON.stringify(c),
     });
     if (!res.ok) {
-      setError(`Save failed: ${res.status} ${await res.text()}`);
+      const msg = `Save failed: ${res.status} ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
       return;
     }
     setEditing(null);
+    toast.push(`Saved carrier ${c.name}`, "success");
     reload();
   }
 
@@ -126,9 +131,12 @@ export default function CarriersPage() {
       },
     );
     if (!res.ok) {
-      setError(`Delete failed: ${res.status} ${await res.text()}`);
+      const msg = `Delete failed: ${res.status} ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
       return;
     }
+    toast.push(`Removed ${carrier_id}`, "success");
     reload();
   }
 
