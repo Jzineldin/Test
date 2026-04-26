@@ -464,6 +464,7 @@ function SettingsPanel({
   apiKey: string;
   onClose: () => void;
 }) {
+  const toast = useToast();
   const [me, setMe] = useState<{
     name: string;
     slug: string;
@@ -519,14 +520,45 @@ function SettingsPanel({
           value={me.name}
           onChange={(v) => setMe({ ...me, name: v })}
         />
-        <Field
-          label="Slack/Discord/MS Teams webhook URL"
-          value={me.notification_webhook_url ?? ""}
-          onChange={(v) =>
-            setMe({ ...me, notification_webhook_url: v || null })
-          }
-          placeholder="https://hooks.slack.com/services/..."
-        />
+        <div>
+          <Field
+            label="Slack/Discord/MS Teams webhook URL"
+            value={me.notification_webhook_url ?? ""}
+            onChange={(v) =>
+              setMe({ ...me, notification_webhook_url: v || null })
+            }
+            placeholder="https://hooks.slack.com/services/..."
+          />
+          {me.notification_webhook_url && (
+            <button
+              type="button"
+              onClick={async () => {
+                const r = await fetch(
+                  `${API_URL}/me/notifications/test`,
+                  {
+                    method: "POST",
+                    credentials: "include",
+                    headers: authHeaders(apiKey),
+                  },
+                );
+                if (r.ok) {
+                  const body = (await r.json()) as { ok: boolean };
+                  toast.push(
+                    body.ok
+                      ? "Test notification sent - check Slack."
+                      : "Webhook set but the post failed (check the URL).",
+                    body.ok ? "success" : "error",
+                  );
+                } else {
+                  toast.push(`Test failed: ${r.status}`, "error");
+                }
+              }}
+              className="mt-1 rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:bg-slate-900"
+            >
+              Send test notification
+            </button>
+          )}
+        </div>
         <Field
           label="Forward-inbox alias (for SES Inbound)"
           value={me.forward_inbox_address ?? ""}

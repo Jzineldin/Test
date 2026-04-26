@@ -550,6 +550,26 @@ def rotate_webhook_secret(org: CurrentOrg = Depends(current_org)) -> dict[str, s
         return {"webhook_secret": new_secret}
 
 
+@app.post("/me/notifications/test")
+def test_notification(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
+    """Fire a synthetic notification to the org's configured webhook so the
+    broker can confirm Slack/Teams wiring works without waiting for a real
+    triage. Returns ok=True if the webhook accepted the post."""
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        webhook_url = (row.notification_webhook_url or "").strip() or None
+    if not webhook_url:
+        raise HTTPException(400, detail="notification_webhook_url is not set")
+    client = get_client_for_url(webhook_url)
+    sent = client.send(Notification(
+        title="AppetiteMatch test notification",
+        body="Wiring works. You'll see real pings on triage.completed and quote.received.",
+        fields={"org": org.name, "kind": "test"},
+    ))
+    return {"ok": bool(sent), "webhook_url_set": True}
+
+
 def _org_carriers(org_id: int) -> list[Carrier]:
     """Read carriers for an org, seeding the bundled samples on first call.
 

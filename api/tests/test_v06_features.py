@@ -86,6 +86,40 @@ def test_history_filter_combines_insured_and_state(client):
     assert body[0]["primary_state"] == "TX"
 
 
+def test_test_notification_400_when_unset(client):
+    r = client.post("/me/notifications/test", headers=HEADERS)
+    assert r.status_code == 400
+    assert "not set" in r.json()["detail"]
+
+
+def test_test_notification_uses_configured_webhook(client, monkeypatch):
+    """When notification_webhook_url is configured, the endpoint sends a
+    Notification through whatever client get_client_for_url returns. The
+    test installs a stub client and asserts it received exactly one ping."""
+    sent: list[object] = []
+
+    class _Stub:
+        def send(self, n):  # pragma: no cover - tested via assertion
+            sent.append(n)
+            return True
+
+    import app.notifications as notifications_pkg
+    monkeypatch.setattr(
+        notifications_pkg, "get_client_for_url", lambda _url: _Stub(),
+    )
+    import app.main as main_mod
+    monkeypatch.setattr(main_mod, "get_client_for_url", lambda _url: _Stub())
+
+    client.patch(
+        "/me",
+        json={"notification_webhook_url": "https://hooks.slack.com/x/y"},
+        headers=HEADERS,
+    )
+    r = client.post("/me/notifications/test", headers=HEADERS)
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+
+
 def test_history_filters_by_carrier_id(client):
     """Drop two runs in the same org; filter by a carrier_id that only
     one of them produced a draft for."""
