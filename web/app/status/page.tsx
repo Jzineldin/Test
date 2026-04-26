@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { useEffect, useState } from "react";
 
 const API_URL =
@@ -46,28 +47,7 @@ export default function StatusPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight text-slate-100"
-        >
-          AppetiteMatch
-        </Link>
-        <nav className="flex items-center gap-6 text-sm">
-          <Link href="/pricing" className="text-slate-400 hover:text-slate-100">
-            Pricing
-          </Link>
-          <Link
-            href="/changelog"
-            className="text-slate-400 hover:text-slate-100"
-          >
-            Changelog
-          </Link>
-          <Link href="/docs" className="text-slate-400 hover:text-slate-100">
-            Docs
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <section className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
@@ -142,19 +122,7 @@ export default function StatusPage() {
         </p>
       </section>
 
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-slate-500">
-          <span>© 2026 AppetiteMatch</span>
-          <div className="flex gap-5">
-            <Link href="/privacy" className="hover:text-slate-300">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-slate-300">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

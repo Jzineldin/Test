@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
 export const metadata = {
   title: "Help & how-to",
@@ -9,28 +10,7 @@ export const metadata = {
 export default function HelpPage() {
   return (
     <main className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight text-slate-100"
-        >
-          AppetiteMatch
-        </Link>
-        <nav className="flex items-center gap-6 text-sm">
-          <Link href="/pricing" className="text-slate-400 hover:text-slate-100">
-            Pricing
-          </Link>
-          <Link href="/docs" className="text-slate-400 hover:text-slate-100">
-            API docs
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-md bg-emerald-500 px-4 py-2 text-xs font-medium text-slate-950 hover:bg-emerald-400"
-          >
-            Start free trial →
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <section className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-slate-300">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
@@ -228,25 +208,7 @@ export default function HelpPage() {
         </p>
       </section>
 
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-slate-500">
-          <span>© 2026 AppetiteMatch</span>
-          <div className="flex gap-5">
-            <Link href="/privacy" className="hover:text-slate-300">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-slate-300">
-              Terms
-            </Link>
-            <a
-              href="mailto:hello@appetitematch.com"
-              className="hover:text-slate-300"
-            >
-              Contact
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
 export const metadata = {
   title: "Privacy Policy - AppetiteMatch",
 };
 
 export default function PrivacyPage() {
-  return (
+  return (<div className="min-h-screen flex flex-col"><SiteHeader />
+
     <main className="mx-auto max-w-3xl px-6 py-16 text-sm leading-relaxed text-slate-300">
       <Link href="/" className="text-xs text-emerald-400 hover:underline">
         ← Back
@@ -114,7 +116,7 @@ export default function PrivacyPage() {
         </p>
       </Section>
     </main>
-  );
+  <SiteFooter /></div>);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
