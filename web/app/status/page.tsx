@@ -23,25 +23,34 @@ export default function StatusPage() {
   const [healthy, setHealthy] = useState<boolean | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    async function check() {
       const t0 = performance.now();
       try {
         const [healthRes, versionRes] = await Promise.all([
-          fetch(`${API_URL}/healthz`),
-          fetch(`${API_URL}/version`),
+          fetch(`${API_URL}/healthz`, { cache: "no-store" }),
+          fetch(`${API_URL}/version`, { cache: "no-store" }),
         ]);
         if (cancelled) return;
         setLatencyMs(Math.round(performance.now() - t0));
         setHealthy(healthRes.ok);
         if (versionRes.ok) setVersion(await versionRes.json());
+        setLastChecked(new Date());
       } catch {
-        if (!cancelled) setHealthy(false);
+        if (!cancelled) {
+          setHealthy(false);
+          setLastChecked(new Date());
+        }
       }
-    })();
+    }
+    check();
+    const id = setInterval(check, 30000);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, []);
 
@@ -54,7 +63,12 @@ export default function StatusPage() {
           Status
         </h1>
         <p className="mt-3 text-sm text-slate-400">
-          Live readout of the production API. Refresh this page anytime.
+          Live readout of the production API. Auto-refreshes every 30 seconds.
+          {lastChecked && (
+            <span className="ml-1 text-slate-500">
+              Last check: {lastChecked.toLocaleTimeString()}.
+            </span>
+          )}
         </p>
 
         <div className="mt-8 rounded-md border border-slate-800 bg-slate-950 p-5">
