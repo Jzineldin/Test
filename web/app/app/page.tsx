@@ -1373,11 +1373,30 @@ function DraftedEmails({
   onSend: (id: number) => void;
   onOutcome: (id: number, outcome: "bound" | "declined", premiumCents?: number) => void;
 }) {
+  const unsent = drafts.filter((d) => d.id != null && !d.sent_at);
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Drafted carrier emails ({drafts.length})
-      </h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+          Drafted carrier emails ({drafts.length})
+        </h2>
+        {unsent.length > 1 && (
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Send all ${unsent.length} unsent drafts to carriers? Each carrier receives the same submission packet with their tailored cover.`,
+                )
+              ) {
+                unsent.forEach((d) => d.id != null && onSend(d.id));
+              }
+            }}
+            className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 transition hover:bg-emerald-400"
+          >
+            Send all {unsent.length}
+          </button>
+        )}
+      </div>
       <div className="space-y-4">
         {drafts.map((d) => {
           const isSent = Boolean(d.sent_at);
