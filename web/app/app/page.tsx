@@ -25,6 +25,7 @@ type Me = {
   slug: string;
   plan: string;
   monthly_submission_quota: number;
+  user_role?: "admin" | "csr" | null;
 };
 
 /** Bearer header for the optional api-key path. Always co-fired with
@@ -285,10 +286,14 @@ export default function Home() {
     return <DashboardSkeleton />;
   }
 
+  // API-key auth has no user context — treat as admin for the surfaces.
+  // Cookie-authed users are gated by their actual role.
+  const isAdmin = !me?.user_role || me.user_role === "admin";
+
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
-      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
+      <header className="mb-10 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
             {me?.org_name ?? "AppetiteMatch"}
           </h1>
@@ -296,21 +301,25 @@ export default function Home() {
             Wholesale broker workflow — ACORD in, carrier-ready submissions out.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <HealthPill />
           {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
-          <Link
-            href="/app/carriers"
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            Carriers
-          </Link>
-          <Link
-            href="/app/users"
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            Team
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/app/carriers"
+              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+            >
+              Carriers
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              href="/app/users"
+              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+            >
+              Team
+            </Link>
+          )}
           <Link
             href="/app/audit"
             className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
