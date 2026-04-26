@@ -48,39 +48,121 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 lg:pt-24">
-      <p className="mb-4 text-xs uppercase tracking-[0.2em] text-emerald-400">
-        For wholesale commercial insurance brokers + MGAs
-      </p>
-      <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-slate-100 sm:text-5xl">
-        Triage every submission in seconds.
-        <span className="block text-slate-400">
-          Send carrier-ready packages without the copy-paste.
-        </span>
-      </h1>
-      <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-400">
-        Your retail agents drop ACORDs in your inbox. Our agent reads each one,
-        matches it to the carriers that actually want the risk, drafts the cover
-        email, and waits for your reviewer. CSRs go from 200 submissions a month
-        to 1,000 — without hiring.
-      </p>
-      <div className="mt-10 flex flex-wrap items-center gap-4">
-        <Link
-          href="/signup"
-          className="rounded-md bg-emerald-500 px-5 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-400"
-        >
-          Start free trial
-        </Link>
-        <Link
-          href="/app"
-          className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 hover:bg-slate-900"
-        >
-          Try the live demo →
-        </Link>
+    <section className="mx-auto grid max-w-6xl gap-12 px-6 pt-12 pb-20 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:pt-24">
+      <div>
+        <p className="mb-4 text-xs uppercase tracking-[0.2em] text-emerald-400">
+          For wholesale commercial insurance brokers + MGAs
+        </p>
+        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-slate-100 sm:text-5xl">
+          Triage every submission in seconds.
+          <span className="block text-slate-400">
+            Send carrier-ready packages without the copy-paste.
+          </span>
+        </h1>
+        <p className="mt-6 text-base leading-relaxed text-slate-400">
+          Your retail agents drop ACORDs in your inbox. Our agent reads each one,
+          matches it to the carriers that actually want the risk, drafts the cover
+          email, attaches the original PDF, and waits for your reviewer. CSRs go
+          from 200 submissions a month to 1,000 — without hiring.
+        </p>
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <Link
+            href="/signup"
+            className="rounded-md bg-emerald-500 px-5 py-3 text-sm font-medium text-slate-950 hover:bg-emerald-400"
+          >
+            Start free trial
+          </Link>
+          <Link
+            href="/app"
+            className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 hover:bg-slate-900"
+          >
+            Try the live demo →
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-slate-500">
+          50 free triages, no credit card. Set up in 2 minutes.
+        </p>
       </div>
+      <HeroPreview />
     </section>
   );
 }
+
+function HeroPreview() {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-950/80 p-5 shadow-2xl shadow-emerald-500/5">
+      <div className="mb-4 flex items-center gap-2 border-b border-slate-800 pb-3 text-xs">
+        <span className="size-2 rounded-full bg-rose-500/70" />
+        <span className="size-2 rounded-full bg-amber-500/70" />
+        <span className="size-2 rounded-full bg-emerald-500/70" />
+        <span className="ml-3 text-slate-500">
+          appetitematch.com/app — Sunrise HVAC, Tampa FL
+        </span>
+      </div>
+      <p className="text-xs uppercase tracking-widest text-emerald-400">
+        Appetite matches (3)
+      </p>
+      <ul className="mt-3 space-y-2 text-sm">
+        {HERO_MATCHES.map((m) => (
+          <li
+            key={m.name}
+            className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-900/40 px-3 py-2"
+          >
+            <div>
+              <p className="text-slate-100">{m.name}</p>
+              <p className="text-xs text-slate-500">{m.note}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-xs font-mono " +
+                  (m.score >= 0.7
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-slate-800 text-slate-400")
+                }
+              >
+                {m.score.toFixed(2)}
+              </span>
+              <span className="text-xs text-slate-500">{m.qb}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
+          ✓ sent — Atlas
+        </span>
+        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300">
+          ↩ replied — Keystone $42k
+        </span>
+        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
+          ★ BOUND · $42,000
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const HERO_MATCHES = [
+  {
+    name: "Atlas Specialty E&S",
+    note: "Artisan contractor, FL in-appetite",
+    score: 0.84,
+    qb: "4d",
+  },
+  {
+    name: "Keystone Mutual",
+    note: "NAICS 238 + GL + auto in-band",
+    score: 0.71,
+    qb: "7d",
+  },
+  {
+    name: "Redwood Underwriters",
+    note: "Property only — skipped",
+    score: 0.32,
+    qb: "—",
+  },
+];
 
 function Problem() {
   return (
