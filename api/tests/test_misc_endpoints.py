@@ -14,7 +14,11 @@ from fastapi.testclient import TestClient
 def client(monkeypatch, tmp_path):
     db_path = tmp_path / "misc.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("CARRIERS_DIR", str(tmp_path / "carriers"))
+    # Point at the real bundled sample carriers so /carriers GET seeds
+    # something non-empty for the demo org and triage isn't blocked.
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[2]
+    monkeypatch.setenv("CARRIERS_DIR", str(repo / "data" / "carriers"))
     for var in (
         "STRIPE_SECRET_KEY", "SES_FROM_ADDRESS",
         "AWS_ACCESS_KEY_ID", "ANTHROPIC_API_KEY",
@@ -85,6 +89,47 @@ def test_portal_link_404_when_no_stripe_customer(client):
     # Demo org has no stripe_customer_id at all.
     assert r.status_code == 400
     assert "subscription" in r.json()["detail"].lower()
+
+
+def _minimal_submission(sid: str = "SUB-BULK-1") -> dict:
+    return {
+        "submission_id": sid,
+        "received_at": "2026-04-26",
+        "retail_agent_email": "agent@example.com",
+        "insured": {
+            "legal_name": "Bulk Test Co",
+            "naics": "238220",
+            "primary_state": "TX",
+            "annual_revenue": "5000000",
+            "business_description": "HVAC contractor.",
+            "years_in_business": 10,
+        },
+        "coverages": [{"line": "general_liability"}],
+    }
+
+
+def test_bulk_triage_runs_each_submission_and_aggregates(client):
+    body = [
+        _minimal_submission("SUB-A"),
+        _minimal_submission("SUB-B"),
+        _minimal_submission("SUB-C"),
+    ]
+    r = client.post("/triage/bulk", json=body, headers=HEADERS)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["ok_count"] == 3, [i.get("error") for i in out["items"]]
+    assert out["error_count"] == 0
+    ids = {i["submission_id"] for i in out["items"]}
+    assert ids == {"SUB-A", "SUB-B", "SUB-C"}
+    for i in out["items"]:
+        assert i["status"] == "ok"
+        assert i["result"] is not None
+
+
+def test_bulk_triage_413_when_over_cap(client):
+    body = [_minimal_submission(f"SUB-{i}") for i in range(60)]
+    r = client.post("/triage/bulk", json=body, headers=HEADERS)
+    assert r.status_code == 413
 
 
 def test_portal_link_400_when_customer_id_is_stub(client):

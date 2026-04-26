@@ -746,6 +746,60 @@ def triage(
     return _run_and_persist(submission, org_id=org.id)
 
 
+class BulkTriageItem(BaseModel):
+    submission_id: str
+    status: str  # 'ok' | 'error'
+    result: TriageResult | None = None
+    error: str | None = None
+
+
+class BulkTriageResponse(BaseModel):
+    items: list[BulkTriageItem]
+    ok_count: int
+    error_count: int
+
+
+_BULK_MAX = 50
+
+
+@app.post("/triage/bulk", response_model=BulkTriageResponse)
+@limiter.limit(_TRIAGE_RATE)
+def triage_bulk(
+    request: Request,
+    submissions: list[Submission],
+    org: CurrentOrg = Depends(current_org),
+) -> BulkTriageResponse:
+    """Run triage on N submissions in one request.
+
+    Sequential — Claude has rate limits and we don't want one slow LLM
+    call to block the whole batch's failure path. Each submission gets
+    its own try/except so a bad row doesn't kill the whole batch."""
+    if len(submissions) > _BULK_MAX:
+        raise HTTPException(
+            413, detail=f"Too many submissions; max {_BULK_MAX} per call",
+        )
+    items: list[BulkTriageItem] = []
+    ok = 0
+    err = 0
+    for s in submissions:
+        try:
+            result = _run_and_persist(s, org_id=org.id)
+            items.append(BulkTriageItem(
+                submission_id=s.submission_id,
+                status="ok",
+                result=result,
+            ))
+            ok += 1
+        except Exception as e:
+            items.append(BulkTriageItem(
+                submission_id=s.submission_id,
+                status="error",
+                error=str(e),
+            ))
+            err += 1
+    return BulkTriageResponse(items=items, ok_count=ok, error_count=err)
+
+
 @app.post("/triage/upload", response_model=TriageResult)
 @limiter.limit(_TRIAGE_RATE)
 async def triage_upload(
