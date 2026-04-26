@@ -106,10 +106,12 @@ export default function Home() {
     router.replace("/login");
   }
 
+  const [historyLimit, setHistoryLimit] = useState(20);
+
   const loadHistory = useCallback(async () => {
     if (!authChecked) return;
     try {
-      const params = new URLSearchParams({ limit: "20" });
+      const params = new URLSearchParams({ limit: String(historyLimit) });
       if (historyQuery.insured) params.set("insured", historyQuery.insured);
       if (historyQuery.state) params.set("state", historyQuery.state);
       if (historyQuery.carrier_id) params.set("carrier_id", historyQuery.carrier_id);
@@ -121,7 +123,7 @@ export default function Home() {
     } catch {
       /* history is best-effort; ignore failures */
     }
-  }, [apiKey, historyQuery, authChecked]);
+  }, [apiKey, historyQuery, authChecked, historyLimit]);
 
   const loadUsage = useCallback(async () => {
     if (!authChecked) return;
@@ -576,6 +578,8 @@ export default function Home() {
         query={historyQuery}
         onQueryChange={setHistoryQuery}
         carrierStats={carrierStats}
+        canLoadMore={history.length >= historyLimit}
+        onLoadMore={() => setHistoryLimit((n) => n + 20)}
       />
       </div>
     </main>
@@ -1077,6 +1081,8 @@ function History({
   query,
   onQueryChange,
   carrierStats,
+  canLoadMore,
+  onLoadMore,
 }: {
   history: TriageRunSummary[];
   onOpen: (id: number) => void;
@@ -1084,6 +1090,8 @@ function History({
   query: { insured: string; state: string; carrier_id: string };
   onQueryChange: (q: { insured: string; state: string; carrier_id: string }) => void;
   carrierStats: CarrierStats[];
+  canLoadMore: boolean;
+  onLoadMore: () => void;
 }) {
   function downloadCsv() {
     // Trigger an authed download via a temporary anchor + fetch.
@@ -1187,6 +1195,16 @@ function History({
         </table>
       </div>
       </div>
+      {canLoadMore && (
+        <div className="mt-3 flex justify-center">
+          <button
+            onClick={onLoadMore}
+            className="rounded-md border border-slate-700 px-4 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Load 20 more
+          </button>
+        </div>
+      )}
     </section>
   );
 }
