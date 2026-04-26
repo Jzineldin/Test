@@ -13,6 +13,7 @@ node_modules/
 .next/
 dist/
 build/
+tsconfig.tsbuildinfo
 
 # Env / secrets
 .env

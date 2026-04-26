@@ -9,6 +9,14 @@ export const metadata = {
 const RELEASES: Release[] = [
   {
     when: "2026-04-26",
+    tag: "v0.6",
+    items: [
+      "**Inbound email triage live.** Brokers can forward an ACORD-attached email to triage+slug@appetitematch.com; AWS SES -> S3 -> Lambda parses the MIME, base64s attachments, and POSTs the signed payload to /webhooks/email. End-to-end smoke-tested.",
+      "**Animated /try walkthrough** - autoplays the full broker flow on page load (paste, prefilter, score, draft, send, bound) with step controls and replay. No video recording needed.",
+    ],
+  },
+  {
+    when: "2026-04-26",
     tag: "v0.5",
     items: [
       "**Per-carrier analytics** - see which markets actually quote back, sorted by bind rate.",
