@@ -823,7 +823,8 @@ function History({
           </button>
         </div>
       </div>
-      <div className="overflow-hidden rounded-md border border-slate-800">
+      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="min-w-[640px] overflow-hidden rounded-md border border-slate-800">
         <table className="w-full text-sm">
           <thead className="bg-slate-900 text-left text-slate-400">
             <tr>
@@ -863,6 +864,7 @@ function History({
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </section>
   );
@@ -1076,7 +1078,8 @@ function Matches({
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
         Appetite matches ({matches.length})
       </h2>
-      <div className="overflow-hidden rounded-md border border-slate-800">
+      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="min-w-[640px] overflow-hidden rounded-md border border-slate-800">
         <table className="w-full text-sm">
           <thead className="bg-slate-900 text-left text-slate-400">
             <tr>
@@ -1120,6 +1123,7 @@ function Matches({
             ))}
           </tbody>
         </table>
+      </div>
       </div>
       <p className="mt-3 text-xs italic text-slate-400">{summary}</p>
     </section>
@@ -1293,10 +1297,11 @@ function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
   return (
     <section className="mt-12 border-t border-slate-800 pt-8">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Per-carrier performance - this period
+        Per-carrier performance, this period
       </h2>
-      <div className="overflow-x-auto rounded-md border border-slate-800">
-        <table className="w-full min-w-[640px] text-left text-sm">
+      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="min-w-[760px] overflow-hidden rounded-md border border-slate-800">
+        <table className="w-full text-left text-sm">
           <thead className="bg-slate-900/40 text-xs uppercase tracking-widest text-slate-500">
             <tr>
               <th className="px-4 py-3">Carrier</th>
@@ -1341,6 +1346,7 @@ function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </section>
   );
@@ -1400,7 +1406,7 @@ function DraftedEmails({
                 )}
               </div>
               <p className="mb-3 text-sm font-semibold text-slate-100">{d.subject}</p>
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-300">
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-300">
                 {d.body}
               </pre>
               {hasReply && d.quote_reply_body && (
@@ -1408,7 +1414,7 @@ function DraftedEmails({
                   <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-sky-300">
                     Carrier reply
                   </p>
-                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-200">
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-200">
                     {d.quote_reply_body}
                   </pre>
                 </div>
