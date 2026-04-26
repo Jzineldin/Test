@@ -228,7 +228,11 @@ def auth_signup(body: SignupRequest) -> None:
             f"Hi {user_name or user_email.split('@')[0]},\n\n"
             f"Click below to finish setting up your account. Link expires in 15 minutes.\n\n"
             f"{link}\n\n"
-            "If you didn't request this, ignore the email.\n"
+            "Once you're in, the 90-second setup wizard at\n"
+            f"{base}/app/setup will walk you through forwarding inbound\n"
+            "submissions, Slack pings, and your real carrier list.\n\n"
+            "If you didn't request this, ignore the email.\n\n"
+            "- AppetiteMatch\n"
         ),
     )
     return None
@@ -258,12 +262,13 @@ def auth_login(body: LoginRequest) -> None:
     email_client = get_email_client()
     email_client.send(
         to=user.email,
-        subject="Your Submission Triage login link",
+        subject="Your AppetiteMatch login link",
         body=(
             f"Hi {user.name or user.email.split('@')[0]},\n\n"
-            f"Click below to sign in. Link expires in 15 minutes.\n\n"
+            f"Click below to sign in to AppetiteMatch. Link expires in 15 minutes.\n\n"
             f"{link}\n\n"
-            "If you didn't request this, ignore the email.\n"
+            "If you didn't request this, ignore the email.\n\n"
+            "- AppetiteMatch\n"
         ),
     )
     return None

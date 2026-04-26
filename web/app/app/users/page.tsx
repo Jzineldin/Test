@@ -29,6 +29,7 @@ export default function UsersPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [me, setMe] = useState<{ user_role?: string } | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -221,11 +222,31 @@ export default function UsersPage() {
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-          Current users ({users.length})
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+            Current users ({users.length})
+          </h2>
+          {users.length > 5 && (
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter by name or email…"
+              className="w-full max-w-xs rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none sm:w-72"
+            />
+          )}
+        </div>
         <ul className="overflow-hidden rounded-md border border-slate-800">
-          {users.map((u) => (
+          {users
+            .filter((u) => {
+              const q = query.trim().toLowerCase();
+              if (!q) return true;
+              return (
+                u.email.toLowerCase().includes(q) ||
+                (u.name ?? "").toLowerCase().includes(q)
+              );
+            })
+            .map((u) => (
             <li
               key={u.id}
               className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900 bg-slate-950 px-4 py-3 last:border-b-0"
