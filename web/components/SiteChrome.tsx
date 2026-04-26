@@ -113,9 +113,11 @@ export function SiteFooter() {
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Link href="/help" className="hover:text-slate-300">Help</Link>
           <Link href="/docs" className="hover:text-slate-300">Docs</Link>
+          <Link href="/changelog" className="hover:text-slate-300">Changelog</Link>
           <Link href="/status" className="hover:text-slate-300">Status</Link>
           <Link href="/privacy" className="hover:text-slate-300">Privacy</Link>
           <Link href="/terms" className="hover:text-slate-300">Terms</Link>
+          <a href="/feed.xml" className="hover:text-slate-300">RSS</a>
           <a href="mailto:hello@appetitematch.com" className="hover:text-slate-300">
             Contact
           </a>
