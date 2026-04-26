@@ -599,6 +599,24 @@ export default function Home() {
                 onOutcome={setOutcome}
                 onEdit={editDraft}
               />
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => {
+                    setResult(null);
+                    setError(null);
+                    if (mode === "json")
+                      setSubmissionJson(
+                        JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2),
+                      );
+                    setPdfFile(null);
+                    setExtraFiles([]);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-900"
+                >
+                  Run another triage
+                </button>
+              </div>
             </div>
           )}
         </div>
