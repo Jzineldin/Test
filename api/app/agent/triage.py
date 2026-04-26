@@ -98,9 +98,15 @@ def _draft_user_prompt(
             f"{carrier.email_outro}\n"
         )
     extras_block = ("\n" + "\n".join(extras)) if extras else ""
+    salutation_target = (
+        f"underwriter {carrier.underwriter_name} at {carrier.name}"
+        if carrier.underwriter_name
+        else f"the underwriting desk at {carrier.name}"
+    )
     return (
         "DRAFT_EMAIL_TASK\n\n"
-        f"Write the cover email to {carrier.name} ({carrier.submission_email}) "
+        f"Write the cover email to {salutation_target} "
+        f"({carrier.submission_email}) "
         f"for the submission below. Lead with facts relevant to this carrier's "
         f"appetite. Reference their typical {carrier.typical_quote_back_days}-day "
         f"quote-back timeline at the close. Return JSON of shape "
