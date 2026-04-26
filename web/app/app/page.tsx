@@ -592,7 +592,11 @@ export default function Home() {
                 history={history}
                 onOpen={openHistoryRun}
               />
-              <Matches matches={result.matches} summary={result.summary} />
+              <Matches
+                matches={result.matches}
+                summary={result.summary}
+                submissionId={result.submission_id}
+              />
               <DraftedEmails
                 drafts={result.drafted_emails}
                 onSend={sendDraft}
@@ -1742,9 +1746,11 @@ function PriorRuns({
 function Matches({
   matches,
   summary,
+  submissionId,
 }: {
   matches: TriageResult["matches"];
   summary: string;
+  submissionId?: string;
 }) {
   return (
     <section className="mb-8">
@@ -1754,6 +1760,11 @@ function Matches({
             Summary
           </span>
           <span className="ml-2">{summary}</span>
+          {submissionId && (
+            <span className="ml-3 rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 align-middle font-mono text-[10px] text-slate-400">
+              {submissionId}
+            </span>
+          )}
         </p>
       )}
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
