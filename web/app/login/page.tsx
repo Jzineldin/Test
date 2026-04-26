@@ -1,15 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If they hit /login while already authed, send them to /app.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/me`, { credentials: "include" })
+      .then((r) => {
+        if (!cancelled && r.ok) router.replace("/app");
+      })
+      .catch(() => {
+        /* not authed; stay on the form */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
