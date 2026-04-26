@@ -424,6 +424,7 @@ def _run_and_persist(
         broker_profile=_broker_profile(org_id),
         attachments=attachments,
     )
+    notify_url: str | None = None
     with session_scope() as session:
         run = save_triage_run(
             session, submission, result, org_id=org_id,
@@ -454,6 +455,34 @@ def _run_and_persist(
                 "draft_count": len(result.drafted_emails),
             },
         )
+        from .db.models import Org as OrgRow
+        org_row = session.get(OrgRow, org_id)
+        notify_url = (org_row.notification_webhook_url or "").strip() or None
+
+    # Fire-and-forget Slack/Discord/Teams notification *outside* the DB tx so
+    # a flaky webhook never rolls back persisted triage state.
+    if notify_url and result.drafted_emails:
+        client = get_client_for_url(notify_url)
+        if client is not None:
+            top = result.drafted_emails[0]
+            top_score = next(
+                (m.score for m in result.matches if m.carrier_id == top.carrier_id),
+                None,
+            )
+            client.send(Notification(
+                title=f"New submission triaged — {submission.insured.legal_name}",
+                body=(
+                    f"State: {submission.insured.primary_state} · "
+                    f"NAICS: {submission.insured.naics or '?'} · "
+                    f"{len(result.matches)} carriers scored, "
+                    f"{len(result.drafted_emails)} drafts ready"
+                ),
+                fields={
+                    "Top match": f"{top.carrier_id}"
+                    + (f" · {top_score:.2f}" if top_score is not None else ""),
+                    "Submission": result.submission_id,
+                },
+            ))
     return result
 
 

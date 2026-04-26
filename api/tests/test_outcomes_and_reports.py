@@ -174,9 +174,16 @@ def test_inbound_fires_notification_when_org_has_webhook(env, client, monkeypatc
     from tests.conftest import signed_post
     signed_post(client, "/webhooks/inbound", {"provider_message_id": pid, "body": "Quote $42k"})
 
-    assert sent == ["https://hooks.slack.com/services/T/B/X"]
-    assert len(stub.outbox) == 1
-    assert "Quote received" in stub.outbox[0].title
+    # Two notifications fire: triage.completed at /triage time, then a
+    # quote-back when the inbound webhook lands.
+    assert sent == [
+        "https://hooks.slack.com/services/T/B/X",
+        "https://hooks.slack.com/services/T/B/X",
+    ]
+    assert len(stub.outbox) == 2
+    titles = [n.title for n in stub.outbox]
+    assert any("New submission triaged" in t for t in titles)
+    assert any("Quote received" in t for t in titles)
 
 
 def test_inbound_no_webhook_no_notification(env, client, monkeypatch):
