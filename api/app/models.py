@@ -102,6 +102,12 @@ class Carrier(BaseModel):
     appetite: list[AppetiteRule]
     typical_quote_back_days: int = 5
     notes: str | None = None
+    # Optional carrier-specific cover-email tweaks. The drafter prepends
+    # `email_intro` after the greeting and appends `email_outro` before
+    # the broker signature. Lets brokers honor each underwriter's
+    # preferred salutation, internal codes, etc. without re-prompting.
+    email_intro: str | None = None
+    email_outro: str | None = None
 
 
 class AppetiteMatch(BaseModel):

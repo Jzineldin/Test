@@ -106,6 +106,8 @@ export interface Carrier {
   underwriter_name?: string | null;
   typical_quote_back_days: number;
   notes?: string | null;
+  email_intro?: string | null;
+  email_outro?: string | null;
   appetite: CarrierAppetiteRule[];
 }
 

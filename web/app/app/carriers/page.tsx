@@ -318,6 +318,8 @@ function blankCarrier(): Carrier {
     underwriter_name: null,
     typical_quote_back_days: 5,
     notes: null,
+    email_intro: null,
+    email_outro: null,
     appetite: [
       {
         naics_prefixes: [],
@@ -445,6 +447,37 @@ function CarrierEditor({
             className={inputClass}
           />
         </Field>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-[11px] uppercase tracking-widest text-slate-500">
+            Email intro (optional, used verbatim after the salutation)
+          </span>
+          <textarea
+            rows={3}
+            value={form.email_intro ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, email_intro: e.target.value || null })
+            }
+            placeholder="Per our last call, sending this one over for first look."
+            className={inputClass + " font-sans leading-relaxed"}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] uppercase tracking-widest text-slate-500">
+            Email outro (optional, used verbatim before the signature)
+          </span>
+          <textarea
+            rows={3}
+            value={form.email_outro ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, email_outro: e.target.value || null })
+            }
+            placeholder="Reply directly to me at this address; cc submissions@ for tracking."
+            className={inputClass + " font-sans leading-relaxed"}
+          />
+        </label>
       </div>
 
       <div className="mt-6 space-y-4">

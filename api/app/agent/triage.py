@@ -86,6 +86,18 @@ def _draft_user_prompt(
     attachments: list[str],
 ) -> str:
     profile = broker_profile or {}
+    extras: list[str] = []
+    if carrier.email_intro:
+        extras.append(
+            f"REQUIRED_INTRO_TEXT (place verbatim right after the salutation):\n"
+            f"{carrier.email_intro}\n"
+        )
+    if carrier.email_outro:
+        extras.append(
+            f"REQUIRED_OUTRO_TEXT (place verbatim right before the signature):\n"
+            f"{carrier.email_outro}\n"
+        )
+    extras_block = ("\n" + "\n".join(extras)) if extras else ""
     return (
         "DRAFT_EMAIL_TASK\n\n"
         f"Write the cover email to {carrier.name} ({carrier.submission_email}) "
@@ -96,8 +108,9 @@ def _draft_user_prompt(
         f"APPETITE_RATIONALE: {match.rationale}\n"
         f"RISK_FLAGS: {match.risk_flags}\n"
         f"ATTACHMENTS: {json.dumps(attachments)}\n"
-        f"BROKER_PROFILE: {json.dumps(profile)}\n\n"
-        "SUBMISSION:\n"
+        f"BROKER_PROFILE: {json.dumps(profile)}"
+        + extras_block
+        + "\n\nSUBMISSION:\n"
         + submission.model_dump_json(indent=2)
         + "\n\nCARRIER_APPETITE:\n"
         + json.dumps([r.model_dump(mode="json") for r in carrier.appetite], indent=2)
