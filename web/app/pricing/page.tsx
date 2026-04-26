@@ -150,7 +150,11 @@ const FAQ = [
   },
   {
     q: "Do I need to use ACORD PDFs?",
-    a: "No. You can upload PDFs (we OCR them via Document AI) or post normalized JSON to /triage. Most brokers paste from their AMS export and the result is the same.",
+    a: "No. You can upload PDFs (we OCR them via Document AI), post normalized JSON to /triage, or have retail agents forward the email straight to triage+yourorg@appetitematch.com - the inbound parser handles whichever lands first.",
+  },
+  {
+    q: "How does email forwarding work?",
+    a: "Set a forward-inbox alias in Settings. AWS SES catches the email, our Lambda parses the MIME and base64s any PDF attachments, signs the payload with your org's webhook_secret, and POSTs to /webhooks/email. The triage run shows up in your dashboard within 10 seconds. Custom domains (triage@yourbrokerage.com) are available on the Whale tier.",
   },
   {
     q: "Can I bring my own carrier list?",
