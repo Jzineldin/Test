@@ -138,6 +138,44 @@ in Chrome dev-tools mobile mode (or actual phone) and verify:
 
 ---
 
-Last updated: while you sleep on 2026-04-26.
+Last updated: 2026-04-26.
 Branch: `claude/ai-agent-venture-builder-taoWC` · 134 tests green.
-~50 commits since the last redeploy.
+~55 commits since the last redeploy.
+
+## What landed this session (high-level)
+
+- Em-dash + en-dash removed from 55 source files; LLM drafter prompt
+  now forbids them and a defensive translate strips any leftovers
+  before they hit the carrier email or dashboard.
+- Shared SiteHeader / SiteFooter on every marketing page with a
+  hamburger drawer below md so phones get a real nav.
+- Shared DashboardHeader on /app, /app/carriers, /app/users,
+  /app/audit. Sticky nav + admin-gated links + sign-out + drawer.
+- Auth pages (login, signup, verify) are now centered cards with
+  brand mark, password-manager hints, focus rings, spinner on
+  verify, "request new link" CTA on failure.
+- Mobile responsive pass: tables wrap in horizontal-scroll
+  containers, list rows truncate properly, content widths adapt
+  from 4xl/5xl/6xl/7xl by surface.
+- Toast notification system (provider in layout, useToast in
+  pages). Wired into carrier save/delete, user invite/remove,
+  draft send, outcome promotion.
+- Per-carrier email_intro + email_outro fields. Each carrier's
+  underwriter quirks codified once; drafter honors them verbatim.
+- "Send all" bulk action when a triage produces 2+ unsent drafts.
+- Public /status page consuming /version (system mode + latency).
+- /changelog page listing v0.1 to v0.5 with bold-styled features.
+- /help page with broker-focused FAQ.
+- /docs REST API reference.
+- /try public demo (pre-baked, no signup).
+- Custom 404, dynamic OG card, branded Æ favicon, sitemap, robots.
+- Sentry SDK init (DSN-gated; no-op without DSN).
+- Multi-user invites with admin/csr roles + last-admin protection.
+- Server-side admin gating on every mutation endpoint.
+- Stripe Customer Portal endpoint + Settings panel button.
+- Per-carrier analytics endpoint + dashboard table.
+- Bulk triage endpoint (POST /triage/bulk, max 50).
+- CSV bulk-import for carriers.
+- Email signature in Org settings.
+- /version endpoint with subsystem mode.
+- 23+ new tests covering all of the above.
