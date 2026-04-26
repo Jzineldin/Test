@@ -290,6 +290,35 @@ def test_me_returns_settings(client):
     assert "forward_inbox_address" in body
 
 
+def test_me_hides_webhook_secret_from_csr_cookie(client):
+    """Cookie callers with role=csr get webhook_secret=null - they
+    shouldn't see the HMAC key for forging inbound webhooks. Admins
+    and API-key callers still see it."""
+    import app.db as db_pkg
+    from app.db.models import Org, User
+    from app.magic_link import issue_magic_link
+
+    with db_pkg.session_scope() as session:
+        org = session.query(Org).first()
+        assert org is not None
+        user = User(
+            org_id=org.id, email="csr@example.com", name="CSR", role="csr",
+        )
+        session.add(user)
+        session.flush()
+        token = issue_magic_link(session, user)
+    client.post("/auth/verify", json={"token": token})
+    # Drop the API key bearer so resolution goes through the cookie.
+    body = client.get("/me").json()
+    assert body["user_role"] == "csr"
+    assert body["webhook_secret"] is None
+    # Admin path still sees it via API key. Drop the CSR cookie first so
+    # the bearer token actually wins; cookie resolves before bearer in auth.
+    client.cookies.delete("triage_session")
+    body_admin = client.get("/me", headers=HEADERS).json()
+    assert body_admin["webhook_secret"] is not None
+
+
 def test_patch_me_updates_webhook_url(client):
     r = client.patch(
         "/me",

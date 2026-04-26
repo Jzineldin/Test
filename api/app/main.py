@@ -330,6 +330,7 @@ def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
     with session_scope() as session:
         from .db.models import Org as OrgRow
         row = session.get(OrgRow, org.id)
+        is_admin = org.user_role != "csr"  # API-key callers + admin cookies
         return {
             "org_id": org.id,
             "org_name": org.name,
@@ -339,7 +340,11 @@ def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
             "notification_webhook_url": row.notification_webhook_url,
             "forward_inbox_address": row.forward_inbox_address,
             "email_signature": row.email_signature,
-            "webhook_secret": row.webhook_secret,
+            # webhook_secret is the HMAC key for inbound webhooks; only
+            # admins need to see/copy it. CSRs would never wire the SES
+            # Inbound forwarder. Hide it from them so it's not leaked
+            # into Slack screenshots, etc.
+            "webhook_secret": row.webhook_secret if is_admin else None,
             "user_role": org.user_role,
         }
 
