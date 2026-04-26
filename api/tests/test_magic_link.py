@@ -293,6 +293,29 @@ def test_remove_csr_succeeds(client):
     assert csr_id not in {u["id"] for u in listed}
 
 
+def test_promote_csr_to_admin(client):
+    admin_id = _seed_user(client, email="admin@example.com")
+    csr_id = _seed_user(client, email="csr@example.com")
+    _login_as_admin(client, admin_id)
+    r = client.patch(f"/me/users/{csr_id}", json={"role": "admin"})
+    assert r.status_code == 200, r.text
+    assert r.json()["role"] == "admin"
+
+
+def test_demote_last_admin_blocked(client):
+    admin_id = _seed_user(client, email="admin@example.com")
+    _login_as_admin(client, admin_id)
+    r = client.patch(f"/me/users/{admin_id}", json={"role": "csr"})
+    assert r.status_code == 409
+
+
+def test_role_change_invalid_value(client):
+    admin_id = _seed_user(client, email="admin@example.com")
+    _login_as_admin(client, admin_id)
+    r = client.patch(f"/me/users/{admin_id}", json={"role": "owner"})
+    assert r.status_code == 400
+
+
 def test_get_api_key_returns_bearer_token(client):
     user_id = _seed_user(client)
     import app.db as db_pkg

@@ -502,6 +502,47 @@ def invite_user(
     return out
 
 
+class UserRoleUpdate(BaseModel):
+    role: str  # 'admin' | 'csr'
+
+
+@app.patch("/me/users/{user_id}", response_model=UserOut)
+def update_user_role(
+    user_id: int,
+    body: UserRoleUpdate,
+    org: CurrentOrg = Depends(current_org),
+) -> UserOut:
+    """Promote a CSR to admin or demote an admin to CSR. Admin-only.
+    Refuses to demote the last admin."""
+    _require_admin(org)
+    if body.role not in {"admin", "csr"}:
+        raise HTTPException(400, detail="role must be 'admin' or 'csr'")
+    with session_scope() as session:
+        from .db.models import User as UserRow
+        from sqlalchemy import select
+        target = session.get(UserRow, user_id)
+        if target is None or target.org_id != org.id:
+            raise HTTPException(404, detail="User not found in this org")
+        if target.role == "admin" and body.role != "admin":
+            admins = session.execute(
+                select(UserRow).where(
+                    UserRow.org_id == org.id, UserRow.role == "admin",
+                )
+            ).scalars().all()
+            if len(admins) <= 1:
+                raise HTTPException(409, detail="Can't demote the last admin")
+        target.role = body.role
+        record_audit_event(
+            session, org_id=org.id, event_type="user.role_changed",
+            target_id=str(user_id), details={"role": body.role},
+        )
+        return UserOut(
+            id=target.id, email=target.email, name=target.name,
+            role=target.role,
+            created_at=target.created_at, last_login_at=target.last_login_at,
+        )
+
+
 @app.delete("/me/users/{user_id}", status_code=204)
 def remove_user(
     user_id: int, org: CurrentOrg = Depends(current_org),

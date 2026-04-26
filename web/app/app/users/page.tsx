@@ -112,6 +112,24 @@ export default function UsersPage() {
     }
   }
 
+  async function changeRole(u: User, role: "admin" | "csr") {
+    if (u.role === role) return;
+    const res = await fetch(`${API_URL}/me/users/${u.id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const msg = `Role change failed: ${res.status} ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
+      return;
+    }
+    toast.push(`${u.email} -> ${role}`, "success");
+    reload();
+  }
+
   async function remove(u: User) {
     if (!confirm(`Remove ${u.email}? They'll lose access immediately.`)) return;
     const res = await fetch(`${API_URL}/me/users/${u.id}`, {
@@ -278,12 +296,24 @@ export default function UsersPage() {
                 </p>
               </div>
               {isAdmin && (
-                <button
-                  onClick={() => remove(u)}
-                  className="rounded-md border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950"
-                >
-                  Remove
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <select
+                    value={u.role}
+                    onChange={(e) =>
+                      changeRole(u, e.target.value as "admin" | "csr")
+                    }
+                    className="rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  >
+                    <option value="admin">admin</option>
+                    <option value="csr">csr</option>
+                  </select>
+                  <button
+                    onClick={() => remove(u)}
+                    className="rounded-md border border-rose-800 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950"
+                  >
+                    Remove
+                  </button>
+                </div>
               )}
             </li>
           ))}
