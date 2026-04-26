@@ -120,6 +120,68 @@ def test_test_notification_uses_configured_webhook(client, monkeypatch):
     assert r.json()["ok"] is True
 
 
+def test_parse_only_returns_extracted_submission_without_persisting(
+    client, monkeypatch,
+):
+    """The PDF gets parsed and returned, but no run is created and no
+    quota is consumed - it's a preview path."""
+    from app.models import (
+        CoverageRequest, Insured, LineOfBusiness, Submission,
+    )
+    from datetime import date as _date
+
+    parsed = Submission(
+        submission_id="DOCAI-PREVIEW",
+        received_at=_date(2026, 4, 26),
+        retail_agent_email="agent@example.com",
+        insured=Insured(
+            legal_name="Preview Co",
+            naics="238220",
+            business_description="HVAC",
+            primary_state="TX",
+        ),
+        coverages=[CoverageRequest(line=LineOfBusiness.GL)],
+    )
+
+    class _FakeParser:
+        def parse_bytes(self, _b):
+            return parsed
+
+    import app.main as main_mod
+    monkeypatch.setattr(main_mod, "DocAiParser", _FakeParser)
+
+    history_before = client.get("/history", headers=HEADERS).json()
+    r = client.post(
+        "/triage/parse-only",
+        files={"file": ("acord.pdf", b"%PDF-fake", "application/pdf")},
+        headers=HEADERS,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["submission_id"] == "DOCAI-PREVIEW"
+    assert body["insured"]["legal_name"] == "Preview Co"
+    # No persistence happened.
+    history_after = client.get("/history", headers=HEADERS).json()
+    assert len(history_after) == len(history_before)
+
+
+def test_parse_only_503_when_docai_unconfigured(client):
+    r = client.post(
+        "/triage/parse-only",
+        files={"file": ("acord.pdf", b"%PDF-fake", "application/pdf")},
+        headers=HEADERS,
+    )
+    assert r.status_code == 503
+
+
+def test_parse_only_requires_auth(client):
+    r = client.post(
+        "/triage/parse-only",
+        files={"file": ("acord.pdf", b"%PDF-fake", "application/pdf")},
+    )
+    assert r.status_code == 401
+
+
 def test_history_filters_by_carrier_id(client):
     """Drop two runs in the same org; filter by a carrier_id that only
     one of them produced a draft for."""

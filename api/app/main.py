@@ -873,6 +873,30 @@ async def triage_upload(
     )
 
 
+@app.post("/triage/parse-only", response_model=Submission)
+async def triage_parse_only(
+    file: UploadFile = File(...),
+    org: CurrentOrg = Depends(current_org),
+) -> Submission:
+    """Parse the PDF and return the extracted Submission - no scoring,
+    no persistence, no quota. Lets the broker verify Document AI got the
+    fields right (NAICS, state, lines, loss runs) before the LLM scores
+    against carrier appetite. Cheap; doesn't count toward monthly quota.
+
+    Workflow: drop PDF -> Parse only -> review/edit JSON -> Run triage
+    on the corrected JSON. The original PDF still gets attached when
+    sending drafts because the dashboard re-uploads it via /triage/upload
+    on the final Run."""
+    if file.content_type not in {"application/pdf", "application/octet-stream"}:
+        raise HTTPException(415, detail=f"Unsupported content type: {file.content_type}")
+    _ = org  # auth gate; result is generic
+    pdf_bytes = await file.read()
+    try:
+        return DocAiParser().parse_bytes(pdf_bytes)
+    except RuntimeError as e:
+        raise HTTPException(503, detail=str(e)) from e
+
+
 # ---- History ---------------------------------------------------------------
 
 class TriageRunSummary(BaseModel):

@@ -60,6 +60,20 @@ export default function DocsPage() {
           </p>
         </Section>
 
+        <Section title="Preview the parser without scoring">
+          <p>
+            Upload a PDF and get the extracted Submission back without
+            running carrier scoring. Useful for verifying Document AI got
+            the fields right before committing the LLM call. Doesn't count
+            toward your monthly quota and creates no run.
+          </p>
+          <pre className="mt-3 rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-300">
+            {`curl -X POST -H "Authorization: Bearer <your-key>" \\
+  -F "file=@acord-125.pdf" \\
+  ${API_URL}/triage/parse-only`}
+          </pre>
+        </Section>
+
         <Section title="Triage from an ACORD PDF">
           <pre className="rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-300">
             {`curl -X POST -H "Authorization: Bearer <your-key>" \\

@@ -25,6 +25,7 @@ export const RELEASES: Release[] = [
       "**Changelog RSS** at /feed.xml.",
       "**Saved JSON templates** in /app - localStorage-backed; save the current submission shape and reload it later.",
       "**Send test notification** button in Settings - fire a synthetic Slack/Teams ping to verify the webhook URL works without waiting for a real triage.",
+      "**Parse only** path on PDF upload - verify Document AI extraction (NAICS, state, lines, loss runs) before the LLM scores. Switches the editor to JSON mode with the parsed result so the broker can correct extraction misses, then Run triage on the corrected data. Doesn't count toward quota.",
     ],
   },
   {

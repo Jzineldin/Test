@@ -380,12 +380,52 @@ export default function Home() {
               </>
             )}
             {mode === "pdf" && pdfFile && (
-              <button
-                onClick={() => setPdfFile(null)}
-                className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
-              >
-                Clear file
-              </button>
+              <>
+                <button
+                  onClick={async () => {
+                    if (!pdfFile) return;
+                    const fd = new FormData();
+                    fd.append("file", pdfFile);
+                    setLoading(true);
+                    setError(null);
+                    try {
+                      const res = await fetch(`${API_URL}/triage/parse-only`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: authHeaders(apiKey),
+                        body: fd,
+                      });
+                      if (!res.ok) {
+                        throw new Error(`API ${res.status}: ${await res.text()}`);
+                      }
+                      const parsed = await res.json();
+                      setSubmissionJson(JSON.stringify(parsed, null, 2));
+                      setMode("json");
+                      toast.push(
+                        "Parsed - review the extraction, edit if needed, then Run triage.",
+                        "success",
+                      );
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      setError(msg);
+                      toast.push(msg, "error");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  title="Extract fields without LLM scoring; review before triage"
+                  className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900 disabled:opacity-50"
+                >
+                  {loading ? "Parsing…" : "Parse only"}
+                </button>
+                <button
+                  onClick={() => setPdfFile(null)}
+                  className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
+                >
+                  Clear file
+                </button>
+              </>
             )}
           </div>
 
