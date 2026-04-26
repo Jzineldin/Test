@@ -17,14 +17,30 @@ from typing import Protocol
 
 
 @dataclass(frozen=True)
+class Attachment:
+    filename: str
+    content: bytes
+    content_type: str = "application/octet-stream"
+
+
+@dataclass(frozen=True)
 class SentEmail:
     provider_message_id: str
     to: str
     subject: str
+    attachment_count: int = 0
 
 
 class EmailClient(Protocol):
-    def send(self, *, to: str, subject: str, body: str, reply_to: str | None = None) -> SentEmail: ...
+    def send(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        reply_to: str | None = None,
+        attachments: list[Attachment] | None = None,
+    ) -> SentEmail: ...
 
 
 class StubEmailClient:
@@ -37,11 +53,20 @@ class StubEmailClient:
     def __init__(self) -> None:
         self.outbox: list[SentEmail] = []
 
-    def send(self, *, to: str, subject: str, body: str, reply_to: str | None = None) -> SentEmail:
+    def send(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        reply_to: str | None = None,
+        attachments: list[Attachment] | None = None,
+    ) -> SentEmail:
         sent = SentEmail(
             provider_message_id=f"stub-{uuid.uuid4()}",
             to=to,
             subject=subject,
+            attachment_count=len(attachments or []),
         )
         self.outbox.append(sent)
         return sent
@@ -65,23 +90,71 @@ class SesEmailClient:
 
         self._client = boto3.client("ses", region_name=self.region)
 
-    def send(self, *, to: str, subject: str, body: str, reply_to: str | None = None) -> SentEmail:
-        kwargs = {
-            "Source": self.from_address,
-            "Destination": {"ToAddresses": [to]},
-            "Message": {
-                "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {"Text": {"Data": body, "Charset": "UTF-8"}},
-            },
-        }
-        if reply_to:
-            kwargs["ReplyToAddresses"] = [reply_to]
-        response = self._client.send_email(**kwargs)
+    def send(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        reply_to: str | None = None,
+        attachments: list[Attachment] | None = None,
+    ) -> SentEmail:
+        attachments = list(attachments or [])
+        if attachments:
+            response = self._client.send_raw_email(
+                Source=self.from_address,
+                Destinations=[to],
+                RawMessage={"Data": _build_mime(
+                    self.from_address, to, subject, body, reply_to, attachments,
+                )},
+            )
+        else:
+            kwargs = {
+                "Source": self.from_address,
+                "Destination": {"ToAddresses": [to]},
+                "Message": {
+                    "Subject": {"Data": subject, "Charset": "UTF-8"},
+                    "Body": {"Text": {"Data": body, "Charset": "UTF-8"}},
+                },
+            }
+            if reply_to:
+                kwargs["ReplyToAddresses"] = [reply_to]
+            response = self._client.send_email(**kwargs)
         return SentEmail(
             provider_message_id=response["MessageId"],
             to=to,
             subject=subject,
+            attachment_count=len(attachments),
         )
+
+
+def _build_mime(
+    from_address: str,
+    to: str,
+    subject: str,
+    body: str,
+    reply_to: str | None,
+    attachments: list[Attachment],
+) -> bytes:
+    """Build a multipart/mixed RFC-5322 message for SES send_raw_email."""
+    from email.message import EmailMessage  # noqa: PLC0415
+
+    msg = EmailMessage()
+    msg["From"] = from_address
+    msg["To"] = to
+    msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(body)
+    for att in attachments:
+        maintype, _, subtype = att.content_type.partition("/")
+        msg.add_attachment(
+            att.content,
+            maintype=maintype or "application",
+            subtype=subtype or "octet-stream",
+            filename=att.filename,
+        )
+    return msg.as_bytes()
 
 
 _default: EmailClient | None = None

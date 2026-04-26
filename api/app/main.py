@@ -348,6 +348,8 @@ def _run_and_persist(
     org_id: int,
     *,
     attachments: list[str] | None = None,
+    submission_pdf: bytes | None = None,
+    submission_pdf_filename: str | None = None,
 ) -> TriageResult:
     result = triage_submission(
         submission, _carriers_or_503(),
@@ -356,7 +358,11 @@ def _run_and_persist(
         attachments=attachments,
     )
     with session_scope() as session:
-        run = save_triage_run(session, submission, result, org_id=org_id)
+        run = save_triage_run(
+            session, submission, result, org_id=org_id,
+            submission_pdf=submission_pdf,
+            submission_pdf_filename=submission_pdf_filename,
+        )
         # Echo back the persisted draft ids so the dashboard can call
         # /drafts/{id}/send without re-querying.
         by_carrier = {d.carrier_id: d.id for d in run.drafts}
@@ -413,11 +419,14 @@ async def triage_upload(
     except RuntimeError as e:
         raise HTTPException(503, detail=str(e)) from e
     # The original PDF the broker uploaded is what they'd actually want
-    # forwarded to carriers. Reference its filename so the cover email
-    # references a real attachment.
+    # forwarded to carriers. Stash the bytes on the run so /drafts/{id}/send
+    # can attach them, and reference the filename in the cover email.
+    filename = file.filename or "submission.pdf"
     return _run_and_persist(
         submission, org_id=org.id,
-        attachments=[file.filename or "submission.pdf"],
+        attachments=[filename],
+        submission_pdf=pdf_bytes,
+        submission_pdf_filename=filename,
     )
 
 
@@ -545,13 +554,31 @@ def send_draft(
         draft = get_draft(session, draft_id, org_id=org.id)
         if draft is None:
             raise HTTPException(404, detail=f"Draft {draft_id} not found")
+        from .email import Attachment
+        from .db.models import TriageRun
+        run = session.get(TriageRun, draft.run_id)
+        ses_attachments: list[Attachment] = []
+        if run and run.submission_pdf and run.submission_pdf_filename:
+            ses_attachments.append(Attachment(
+                filename=run.submission_pdf_filename,
+                content=run.submission_pdf,
+                content_type="application/pdf",
+            ))
         client = get_email_client()
-        sent = client.send(to=draft.to, subject=draft.subject, body=draft.body)
+        sent = client.send(
+            to=draft.to,
+            subject=draft.subject,
+            body=draft.body,
+            attachments=ses_attachments or None,
+        )
         mark_draft_sent(draft, provider_message_id=sent.provider_message_id)
         record_audit_event(
             session, org_id=org.id, event_type="draft.sent",
             target_id=str(draft.id),
-            details={"to": draft.to, "carrier_id": draft.carrier_id},
+            details={
+                "to": draft.to, "carrier_id": draft.carrier_id,
+                "attachment_count": sent.attachment_count,
+            },
         )
         return _draft_to_status(draft)
 

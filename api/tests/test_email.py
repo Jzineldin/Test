@@ -81,6 +81,33 @@ def test_send_marks_draft_sent_and_records_provider_id(client):
     assert body["provider_message_id"].startswith("stub-")
 
 
+def test_send_attaches_uploaded_pdf_when_run_has_one(client):
+    """When a TriageRun was created from /triage/upload, its submission_pdf
+    should ride along on the outbound carrier email."""
+    import app.db as db_pkg
+    from app.db.models import TriageRun
+
+    draft_id = _seed_triage(client)
+    # Stash a PDF blob on the run so the send path picks it up.
+    pdf_bytes = b"%PDF-1.4\n%stub\n"
+    with db_pkg.session_scope() as session:
+        run = (
+            session.query(TriageRun)
+            .filter_by(org_id=1)
+            .order_by(TriageRun.id.desc())
+            .first()
+        )
+        run.submission_pdf = pdf_bytes
+        run.submission_pdf_filename = "acme_acord_125.pdf"
+
+    r = client.post(f"/drafts/{draft_id}/send", headers=HEADERS)
+    assert r.status_code == 200, r.text
+
+    from app.email import get_client
+    last = get_client().outbox[-1]
+    assert last.attachment_count == 1
+
+
 def test_send_unknown_draft_returns_404(client):
     r = client.post("/drafts/99999/send", headers=HEADERS)
     assert r.status_code == 404

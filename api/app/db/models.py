@@ -15,6 +15,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     func,
@@ -152,6 +153,10 @@ class TriageRun(Base):
     primary_state: Mapped[str] = mapped_column(String(8))
     summary: Mapped[str] = mapped_column(Text, default="")
     submission_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    # The original PDF the broker uploaded, kept so we can attach it to
+    # outbound carrier emails verbatim. Null for JSON-paste submissions.
+    submission_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    submission_pdf_filename: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True,
     )

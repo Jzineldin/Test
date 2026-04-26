@@ -21,6 +21,8 @@ def save_triage_run(
     result: TriageResult,
     *,
     org_id: int,
+    submission_pdf: bytes | None = None,
+    submission_pdf_filename: str | None = None,
 ) -> TriageRun:
     """Persist a triage run with its matches + drafts. Returns the row."""
     run = TriageRun(
@@ -30,6 +32,8 @@ def save_triage_run(
         primary_state=submission.insured.primary_state,
         summary=result.summary,
         submission_json=submission.model_dump(mode="json"),
+        submission_pdf=submission_pdf,
+        submission_pdf_filename=submission_pdf_filename,
         matches=[
             AppetiteMatchRow(
                 carrier_id=m.carrier_id,

@@ -1,3 +1,9 @@
-from .client import EmailClient, SentEmail, StubEmailClient, get_client
+from .client import Attachment, EmailClient, SentEmail, StubEmailClient, get_client
 
-__all__ = ["EmailClient", "SentEmail", "StubEmailClient", "get_client"]
+__all__ = [
+    "Attachment",
+    "EmailClient",
+    "SentEmail",
+    "StubEmailClient",
+    "get_client",
+]
