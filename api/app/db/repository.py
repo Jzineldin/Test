@@ -23,6 +23,7 @@ def save_triage_run(
     org_id: int,
     submission_pdf: bytes | None = None,
     submission_pdf_filename: str | None = None,
+    submission_extras: list[dict] | None = None,
 ) -> TriageRun:
     """Persist a triage run with its matches + drafts. Returns the row."""
     run = TriageRun(
@@ -34,6 +35,7 @@ def save_triage_run(
         submission_json=submission.model_dump(mode="json"),
         submission_pdf=submission_pdf,
         submission_pdf_filename=submission_pdf_filename,
+        submission_extras=submission_extras,
         matches=[
             AppetiteMatchRow(
                 carrier_id=m.carrier_id,

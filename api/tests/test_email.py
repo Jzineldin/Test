@@ -108,6 +108,44 @@ def test_send_attaches_uploaded_pdf_when_run_has_one(client):
     assert last.attachment_count == 1
 
 
+def test_drafts_attach_submission_extras_alongside_acord(client):
+    """Extras (loss runs, dec pages) stashed on the run should be attached
+    alongside the primary ACORD when the broker hits Send."""
+    import app.db as db_pkg
+    from app.db.models import TriageRun
+    import base64
+
+    draft_id = _seed_triage(client)
+    with db_pkg.session_scope() as session:
+        run = (
+            session.query(TriageRun)
+            .filter_by(org_id=1)
+            .order_by(TriageRun.id.desc())
+            .first()
+        )
+        run.submission_pdf = b"%PDF-1.4\n%acord\n"
+        run.submission_pdf_filename = "acord-125.pdf"
+        run.submission_extras = [
+            {
+                "filename": "loss-runs.pdf",
+                "content_type": "application/pdf",
+                "content_b64": base64.b64encode(b"%PDF-loss-runs").decode("ascii"),
+            },
+            {
+                "filename": "dec-page.pdf",
+                "content_type": "application/pdf",
+                "content_b64": base64.b64encode(b"%PDF-dec").decode("ascii"),
+            },
+        ]
+
+    r = client.post(f"/drafts/{draft_id}/send", headers=HEADERS)
+    assert r.status_code == 200, r.text
+    from app.email import get_client
+    last = get_client().outbox[-1]
+    # ACORD + 2 extras = 3 attachments.
+    assert last.attachment_count == 3
+
+
 def test_send_unknown_draft_returns_404(client):
     r = client.post("/drafts/99999/send", headers=HEADERS)
     assert r.status_code == 404

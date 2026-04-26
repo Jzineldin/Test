@@ -161,6 +161,12 @@ class TriageRun(Base):
     # outbound carrier emails verbatim. Null for JSON-paste submissions.
     submission_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     submission_pdf_filename: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # Optional supplementary attachments (loss runs, dec pages) the broker
+    # uploaded alongside the ACORD or that landed in the inbound email.
+    # Stored as a list of {"filename","content_type","content_b64"}.
+    submission_extras: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON, nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True,
     )

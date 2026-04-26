@@ -766,6 +766,7 @@ def _run_and_persist(
     attachments: list[str] | None = None,
     submission_pdf: bytes | None = None,
     submission_pdf_filename: str | None = None,
+    submission_extras: list[dict] | None = None,
 ) -> TriageResult:
     result = triage_submission(
         submission, _carriers_or_503(org_id),
@@ -779,6 +780,7 @@ def _run_and_persist(
             session, submission, result, org_id=org_id,
             submission_pdf=submission_pdf,
             submission_pdf_filename=submission_pdf_filename,
+            submission_extras=submission_extras,
         )
         # Echo back the persisted draft ids so the dashboard can call
         # /drafts/{id}/send without re-querying.
@@ -921,6 +923,7 @@ async def triage_upload(
     Only the primary PDF is parsed for fields - extras are pass-through."""
     if file.content_type not in {"application/pdf", "application/octet-stream"}:
         raise HTTPException(415, detail=f"Unsupported content type: {file.content_type}")
+    import base64
     pdf_bytes = await file.read()
     try:
         submission = DocAiParser().parse_bytes(pdf_bytes)
@@ -930,12 +933,25 @@ async def triage_upload(
     # forwarded to carriers. Stash the bytes on the run so /drafts/{id}/send
     # can attach them, and reference the filename in the cover email.
     filename = file.filename or "submission.pdf"
-    extra_names = [e.filename or "attachment.pdf" for e in extras]
+    extras_payload: list[dict] = []
+    extra_names: list[str] = []
+    for e in extras:
+        e_bytes = await e.read()
+        if not e_bytes:
+            continue
+        e_name = e.filename or "attachment.pdf"
+        extras_payload.append({
+            "filename": e_name,
+            "content_type": e.content_type or "application/pdf",
+            "content_b64": base64.b64encode(e_bytes).decode("ascii"),
+        })
+        extra_names.append(e_name)
     return _run_and_persist(
         submission, org_id=org.id,
         attachments=[filename, *extra_names],
         submission_pdf=pdf_bytes,
         submission_pdf_filename=filename,
+        submission_extras=extras_payload or None,
     )
 
 
@@ -1158,6 +1174,7 @@ def send_draft(
             raise HTTPException(404, detail=f"Draft {draft_id} not found")
         from .email import Attachment
         from .db.models import TriageRun
+        import base64 as _b64
         run = session.get(TriageRun, draft.run_id)
         ses_attachments: list[Attachment] = []
         if run and run.submission_pdf and run.submission_pdf_filename:
@@ -1165,6 +1182,20 @@ def send_draft(
                 filename=run.submission_pdf_filename,
                 content=run.submission_pdf,
                 content_type="application/pdf",
+            ))
+        # Supplementary PDFs (loss runs, dec pages) the broker uploaded
+        # alongside the ACORD or that landed in the inbound email - the
+        # cover letter references them by name, so we have to actually
+        # attach them too or the carrier sees a phantom-attachment line.
+        for extra in (run.submission_extras or []) if run else []:
+            try:
+                content = _b64.b64decode(extra["content_b64"])
+            except Exception:  # pragma: no cover
+                continue
+            ses_attachments.append(Attachment(
+                filename=extra.get("filename") or "attachment.pdf",
+                content=content,
+                content_type=extra.get("content_type") or "application/pdf",
             ))
         client = get_email_client()
         sent = client.send(
@@ -1545,6 +1576,14 @@ async def inbound_email(request: Request) -> TriageResult | dict:
     # Pass through ALL attachments (loss runs, dec pages, etc.) so they
     # flow into the carrier-bound email - carriers want the full packet.
     pdf_filename = pdfs[0].filename or "submission.pdf"
+    extras_payload = [
+        {
+            "filename": a.filename,
+            "content_type": a.content_type or "application/pdf",
+            "content_b64": a.content_base64,
+        }
+        for a in pdfs[1:]
+    ]
     extra_pdf_names = [a.filename for a in pdfs[1:]]
     submission.retail_agent_email = payload.from_address
     return _run_and_persist(
@@ -1553,6 +1592,7 @@ async def inbound_email(request: Request) -> TriageResult | dict:
         attachments=[pdf_filename, *extra_pdf_names],
         submission_pdf=pdf_bytes,
         submission_pdf_filename=pdf_filename,
+        submission_extras=extras_payload or None,
     )
 
 
