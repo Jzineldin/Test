@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import { DashboardHeader } from "@/components/DashboardChrome";
+import { useToast } from "@/components/Toast";
 import type {
   BillingUsage,
   CarrierStats,
@@ -41,6 +42,7 @@ function requestInit(apiKey: string, base: RequestInit = {}): RequestInit {
 
 export default function Home() {
   const router = useRouter();
+  const toast = useToast();
   const [mode, setMode] = useState<Mode>("pdf");
   const [submissionJson, setSubmissionJson] = useState(
     JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2),
@@ -219,8 +221,11 @@ export default function Home() {
             }
           : prev,
       );
+      toast.push("Draft sent to carrier", "success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      toast.push(msg, "error");
     }
   }
 
@@ -238,10 +243,17 @@ export default function Home() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setError(`API ${res.status}: ${await res.text()}`);
+      const msg = `API ${res.status}: ${await res.text()}`;
+      setError(msg);
+      toast.push(msg, "error");
       return;
     }
+    toast.push(
+      outcome === "bound" ? "Marked bound" : "Marked declined",
+      "success",
+    );
     loadReport();
+    loadCarrierStats();
   }
 
   async function openHistoryRun(runId: number) {
