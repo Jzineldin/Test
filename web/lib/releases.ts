@@ -42,6 +42,8 @@ export const RELEASES: Release[] = [
       "**inbound_email.received audit event** so admins can see what landed even when downstream parsing rejected it.",
       "**Inbound email passes through ALL PDF attachments** (not just the first), so loss runs + dec pages flow to carriers untouched.",
       "**/app/users filter** by name/email when 6+ teammates exist.",
+      "**/app/compare?a=X&b=Y** - side-by-side comparison of two triage runs with 'only in run A/B' callouts. Renewals widget links to it.",
+      "**Per-carrier inline stats** on /app/carriers - 'sent / replied / bound / bind rate' under each card.",
     ],
   },
   {
