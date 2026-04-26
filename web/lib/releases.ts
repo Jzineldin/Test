@@ -44,6 +44,9 @@ export const RELEASES: Release[] = [
       "**/app/users filter** by name/email when 6+ teammates exist.",
       "**/app/compare?a=X&b=Y** - side-by-side comparison of two triage runs with 'only in run A/B' callouts. Renewals widget links to it.",
       "**Per-carrier inline stats** on /app/carriers - 'sent / replied / bound / bind rate' under each card.",
+      "**Multi-attachment uploads** - /triage/upload accepts an `extras` list (loss runs, dec page, etc.). UI shows them in a removable list under the primary ACORD dropzone.",
+      "**Team role change** - inline admin/csr dropdown on each user, last-admin-protected.",
+      "**LLM summary callout** - the per-triage one-line summary is now shown above the matches table.",
     ],
   },
   {
