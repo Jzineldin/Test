@@ -33,6 +33,8 @@ def prefilter(carriers: list[Carrier], submission) -> list[Carrier]:
 
     kept: list[Carrier] = []
     for carrier in carriers:
+        if not carrier.active:
+            continue
         for rule in carrier.appetite:
             if rule.states_out and state in rule.states_out:
                 continue

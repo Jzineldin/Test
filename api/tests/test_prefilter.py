@@ -48,3 +48,12 @@ def test_naics_mismatch_drops_carrier(carriers, acme_submission):
     kept_ids = {c.carrier_id for c in prefilter(carriers, acme_submission)}
     assert "atlas_specialty" not in kept_ids
     assert "redwood_underwriters" not in kept_ids
+
+
+def test_paused_carrier_is_skipped(carriers, acme_submission):
+    """Setting active=False on a carrier removes it from prefilter results
+    even when its appetite would otherwise match."""
+    target = next(c for c in carriers if c.carrier_id == "atlas_specialty")
+    target.active = False
+    kept_ids = {c.carrier_id for c in prefilter(carriers, acme_submission)}
+    assert "atlas_specialty" not in kept_ids

@@ -108,6 +108,10 @@ class Carrier(BaseModel):
     # preferred salutation, internal codes, etc. without re-prompting.
     email_intro: str | None = None
     email_outro: str | None = None
+    # Pause submissions to this carrier without losing the appetite config.
+    # When False the prefilter skips it entirely (no LLM call, no draft).
+    # Defaults to True for backwards compat with existing JSON blobs.
+    active: bool = True
 
 
 class AppetiteMatch(BaseModel):

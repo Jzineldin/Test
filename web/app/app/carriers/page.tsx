@@ -257,16 +257,28 @@ export default function CarriersPage() {
       )}
 
       <ul className="space-y-3">
-        {filteredCarriers.map((c) => (
+        {filteredCarriers.map((c) => {
+          const paused = c.active === false;
+          return (
           <li
             key={c.carrier_id}
-            className="rounded-md border border-slate-800 bg-slate-950 p-4"
+            className={
+              "rounded-md border bg-slate-950 p-4 " +
+              (paused
+                ? "border-slate-800/50 opacity-60"
+                : "border-slate-800")
+            }
           >
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-100">
-                  {c.name}{" "}
+                <p className="flex items-center gap-2 truncate text-sm font-medium text-slate-100">
+                  <span className="truncate">{c.name}</span>
                   <span className="text-xs text-slate-500">{c.carrier_id}</span>
+                  {paused && (
+                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase tracking-widest text-slate-400">
+                      Paused
+                    </span>
+                  )}
                 </p>
                 <p className="mt-1 truncate text-xs text-slate-400">
                   {c.submission_email} · quotes back ~
@@ -274,6 +286,12 @@ export default function CarriersPage() {
                 </p>
               </div>
               <div className="flex shrink-0 gap-2 text-xs">
+                <button
+                  onClick={() => save({ ...c, active: paused })}
+                  className="rounded-md border border-slate-700 px-2 py-1 text-slate-300 hover:bg-slate-900"
+                >
+                  {paused ? "Resume" : "Pause"}
+                </button>
                 <button
                   onClick={() => setEditing(c)}
                   className="rounded-md border border-slate-700 px-2 py-1 text-slate-300 hover:bg-slate-900"
@@ -328,7 +346,8 @@ export default function CarriersPage() {
               ))}
             </div>
           </li>
-        ))}
+        );
+        })}
       </ul>
       {carriers.length === 0 && !editing && (
         <p className="rounded-md border border-dashed border-slate-800 p-6 text-center text-sm text-slate-500">

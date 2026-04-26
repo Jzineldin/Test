@@ -108,6 +108,7 @@ export interface Carrier {
   notes?: string | null;
   email_intro?: string | null;
   email_outro?: string | null;
+  active?: boolean;
   appetite: CarrierAppetiteRule[];
 }
 
