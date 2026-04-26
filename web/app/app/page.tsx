@@ -50,6 +50,7 @@ export default function Home() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [extraFiles, setExtraFiles] = useState<File[]>([]);
   const [result, setResult] = useState<TriageResult | null>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<TriageRunSummary[]>([]);
@@ -209,6 +210,17 @@ export default function Home() {
       const res = mode === "pdf" ? await uploadPdf() : await postJson();
       if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
       setResult((await res.json()) as TriageResult);
+      // Auto-scroll the result panel into view on mobile, where the form
+      // and the result are stacked vertically and the user otherwise has
+      // to manually swipe down past 480px of textarea to see what came back.
+      requestAnimationFrame(() => {
+        if (window.innerWidth < 1024) {
+          resultRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      });
       loadHistory();
       loadUsage();
       loadReport();
@@ -573,7 +585,7 @@ export default function Home() {
           )}
 
           {result && (
-            <>
+            <div ref={resultRef}>
               <PriorRuns
                 currentRunId={history[0]?.id}
                 currentInsured={history[0]?.insured_name}
@@ -587,7 +599,7 @@ export default function Home() {
                 onOutcome={setOutcome}
                 onEdit={editDraft}
               />
-            </>
+            </div>
           )}
         </div>
       </section>
