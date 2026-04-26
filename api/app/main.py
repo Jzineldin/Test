@@ -493,10 +493,14 @@ def invite_user(
         subject=f"You've been invited to {org.name} on AppetiteMatch",
         body=(
             f"Hi {body.name or email.split('@')[0]},\n\n"
-            f"You've been invited to join {org.name}'s submission triage workspace.\n\n"
+            f"{org.name} added you to their submission triage workspace on\n"
+            f"AppetiteMatch as {'an admin' if body.role == 'admin' else 'a CSR'}.\n\n"
             f"Click below to sign in. Link expires in 15 minutes.\n\n"
             f"{link}\n\n"
-            "If you weren't expecting this, ignore the email.\n"
+            f"Once you're in, you'll see {org.name}'s carrier directory\n"
+            "and history. Run a triage from /app to get started.\n\n"
+            "If you weren't expecting this, ignore the email.\n\n"
+            "- AppetiteMatch\n"
         ),
     )
     return out
