@@ -306,6 +306,18 @@ export default function CarriersPage() {
                     <span className="text-emerald-300">
                       {stats[c.carrier_id].drafts_bound} bound
                     </span>
+                    {stats[c.carrier_id].bound_premium_dollars > 0 && (
+                      <>
+                        <span>·</span>
+                        <span className="text-emerald-300">
+                          $
+                          {Math.round(
+                            stats[c.carrier_id].bound_premium_dollars,
+                          ).toLocaleString()}{" "}
+                          bound
+                        </span>
+                      </>
+                    )}
                     {stats[c.carrier_id].drafts_replied > 0 && (
                       <>
                         <span>·</span>
