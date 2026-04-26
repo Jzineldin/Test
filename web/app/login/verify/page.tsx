@@ -29,7 +29,26 @@ function VerifyInner() {
           setError(`Could not verify: ${res.status}. Request a fresh link.`);
           return;
         }
-        router.replace("/app");
+        // First-time signups land in /app/setup; returning users go straight
+        // to /app. The forward_inbox_address sentinel distinguishes them
+        // since the wizard sets it on Step 2 -> Save & continue.
+        let dest = "/app";
+        try {
+          const meRes = await fetch(`${API_URL}/me`, {
+            credentials: "include",
+          });
+          if (meRes.ok) {
+            const me = (await meRes.json()) as {
+              forward_inbox_address: string | null;
+              user_role?: string | null;
+            };
+            const isAdmin = !me.user_role || me.user_role === "admin";
+            if (!me.forward_inbox_address && isAdmin) dest = "/app/setup";
+          }
+        } catch {
+          /* fall through to /app */
+        }
+        router.replace(dest);
       } catch (e) {
         setError(
           `Network error: ${e instanceof Error ? e.message : String(e)}. Request a fresh link.`,
