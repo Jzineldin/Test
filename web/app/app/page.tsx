@@ -1606,12 +1606,22 @@ function PriorRuns({
               {r.match_count} match{r.match_count === 1 ? "" : "es"} ·{" "}
               {r.draft_count} draft{r.draft_count === 1 ? "" : "s"}
             </span>
-            <button
-              onClick={() => onOpen(r.id)}
-              className="shrink-0 rounded border border-sky-700/60 px-2 py-0.5 text-[11px] text-sky-200 hover:bg-sky-500/10"
-            >
-              Open
-            </button>
+            <span className="shrink-0 flex gap-2">
+              <button
+                onClick={() => onOpen(r.id)}
+                className="rounded border border-sky-700/60 px-2 py-0.5 text-[11px] text-sky-200 hover:bg-sky-500/10"
+              >
+                Open
+              </button>
+              {currentRunId != null && (
+                <Link
+                  href={`/app/compare?a=${currentRunId}&b=${r.id}`}
+                  className="rounded border border-sky-700/60 px-2 py-0.5 text-[11px] text-sky-200 hover:bg-sky-500/10"
+                >
+                  Compare
+                </Link>
+              )}
+            </span>
           </li>
         ))}
       </ul>
