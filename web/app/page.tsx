@@ -76,12 +76,18 @@ function Hero() {
             href="/app"
             className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 hover:bg-slate-900"
           >
-            Try the live demo →
+            See it run →
           </Link>
         </div>
-        <p className="mt-4 text-xs text-slate-500">
-          50 free triages, no credit card. Set up in 2 minutes.
-        </p>
+        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+          <span>50 free triages, no credit card.</span>
+          <Link
+            href="/try"
+            className="text-emerald-400 hover:underline"
+          >
+            Or watch a pre-baked demo →
+          </Link>
+        </div>
       </div>
       <HeroPreview />
     </section>
