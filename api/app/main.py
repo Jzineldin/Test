@@ -871,8 +871,13 @@ def triage_bulk(
 async def triage_upload(
     request: Request,
     file: UploadFile = File(...),
+    extras: list[UploadFile] = File(default_factory=list),
     org: CurrentOrg = Depends(current_org),
 ) -> TriageResult:
+    """Primary `file` is the ACORD; optional `extras` are supplementary
+    PDFs (loss runs, dec pages) that get listed as attachments on every
+    drafted carrier email so the carrier sees the full submission packet.
+    Only the primary PDF is parsed for fields - extras are pass-through."""
     if file.content_type not in {"application/pdf", "application/octet-stream"}:
         raise HTTPException(415, detail=f"Unsupported content type: {file.content_type}")
     pdf_bytes = await file.read()
@@ -884,9 +889,10 @@ async def triage_upload(
     # forwarded to carriers. Stash the bytes on the run so /drafts/{id}/send
     # can attach them, and reference the filename in the cover email.
     filename = file.filename or "submission.pdf"
+    extra_names = [e.filename or "attachment.pdf" for e in extras]
     return _run_and_persist(
         submission, org_id=org.id,
-        attachments=[filename],
+        attachments=[filename, *extra_names],
         submission_pdf=pdf_bytes,
         submission_pdf_filename=filename,
     )
