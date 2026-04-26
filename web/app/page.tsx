@@ -8,6 +8,7 @@ export default function Landing() {
       <Problem />
       <HowItWorks />
       <Comparison />
+      <UseCases />
       <Pricing />
       <Footer />
     </div>
@@ -366,6 +367,93 @@ const COMPARISON_ROWS = [
     chatgpt: "10–15 min",
     ams: "30–90 min",
     us: "20 seconds + review",
+  },
+];
+
+
+function UseCases() {
+  return (
+    <section className="border-t border-slate-800 bg-slate-950/40">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          Built for the workflows brokers actually run.
+        </h2>
+        <p className="mt-2 max-w-2xl text-slate-400">
+          Same product, different appetites. A few real-world configurations
+          we've seen.
+        </p>
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+          {USE_CASES.map((u) => (
+            <article
+              key={u.title}
+              className="rounded-lg border border-slate-800 bg-slate-950 p-6"
+            >
+              <p className="text-xs uppercase tracking-widest text-emerald-400">
+                {u.tag}
+              </p>
+              <h3 className="mt-2 text-lg font-medium text-slate-100">
+                {u.title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                {u.body}
+              </p>
+              <ul className="mt-4 space-y-1.5 text-xs text-slate-500">
+                {u.bullets.map((b) => (
+                  <li key={b}>· {b}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const USE_CASES = [
+  {
+    tag: "Artisan contractors",
+    title: "Roofer in Texas, plumber in Florida, HVAC in Georgia",
+    body:
+      "Mid-market construction trades with $1–25M revenue, mostly W-2 staff, GL + Auto + Umbrella. AppetiteMatch flags the carriers in southern in-appetite states with NAICS 23x prefixes and revenue bands that fit, drafts cover emails that reference each carrier's specific underwriting concerns (driver MVRs, subcontractor exposure, loss frequency on auto).",
+    bullets: [
+      "Auto-flags carriers that exclude the insured's state",
+      "Routes umbrella separately when the GL carrier doesn't write umbrella",
+      "Surfaces 75%-of-premium decline triggers on auto loss runs",
+    ],
+  },
+  {
+    tag: "Habitational property",
+    title: "Apartment buildings, condos, mixed-use",
+    body:
+      "$5–50M TIV property accounts in southern states. Carriers want sprinklered, masonry construction, post-2000 build year, verified loss runs. AppetiteMatch reads the location schedule, identifies the carriers whose habitational appetite fits, and embeds the COPE summary inline in the cover.",
+    bullets: [
+      "Reads location schedules + construction class out of the ACORD",
+      "Skips carriers without habitational lines (no wasted submissions)",
+      "Highlights wind/hail exposure for coastal accounts",
+    ],
+  },
+  {
+    tag: "Transportation",
+    title: "Trucking fleets, freight, last-mile",
+    body:
+      "Power-unit count, MVR violations, driver tenure, and loss runs are everything. Routes for-hire trucking risks to the carriers whose appetite includes the insured's mile radius and commodity type, with the FMCSA + MVR data threaded into the cover.",
+    bullets: [
+      "Power-unit and driver count surfaced at the top of the cover",
+      "MVR violation summary disclosed proactively for transparency",
+      "Auto loss ratio computed and defended in the email body",
+    ],
+  },
+  {
+    tag: "Specialty / E&S",
+    title: "Anything your retail can't place",
+    body:
+      "Manufacturing tail risks, environmental contractors, restaurants with liquor, cyber. Define each carrier's appetite once in the directory, AppetiteMatch never sends an out-of-appetite submission again — saves 40-90 minutes per declined risk that would have round-tripped to the underwriter.",
+    bullets: [
+      "Per-org carrier directory — your appetite library, not ours",
+      "Deterministic prefilter rejects out-of-appetite before the LLM call",
+      "Audit log captures every triage decision for E&O reviews",
+    ],
   },
 ];
 
