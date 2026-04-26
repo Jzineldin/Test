@@ -1,88 +1,13 @@
-import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { RELEASES } from "@/lib/releases";
 
 export const metadata = {
   title: "What's new",
   description: "Recent changes to AppetiteMatch.",
+  alternates: {
+    types: { "application/rss+xml": "/feed.xml" },
+  },
 };
-
-const RELEASES: Release[] = [
-  {
-    when: "2026-04-26",
-    tag: "v0.6",
-    items: [
-      "**Inbound email triage live.** Brokers can forward an ACORD-attached email to triage+slug@appetitematch.com; AWS SES -> S3 -> Lambda parses the MIME, base64s attachments, and POSTs the signed payload to /webhooks/email. End-to-end smoke-tested.",
-      "**Animated /try walkthrough** - autoplays the full broker flow on page load (paste, prefilter, score, draft, send, bound) with step controls and replay. No video recording needed.",
-      "**Animated landing hero** - HeroPreview loops paste -> match -> sent -> replied -> bound. Respects prefers-reduced-motion.",
-      "**Carrier search + CSV export** at /app/carriers - filter by name, NAICS, state, line; export round-trips with the bulk importer.",
-      "**Live JSON validation** in the /app submission editor - red border + Format button, catches malformed paste before Run.",
-      "**Keyboard shortcut** Cmd/Ctrl+Enter runs triage from anywhere on /app.",
-      "**/book page** with env-driven calendar embed (NEXT_PUBLIC_BOOKING_URL); Whale-tier CTA on landing + pricing now points there.",
-      "**/status auto-refresh** every 30 seconds with last-checked timestamp.",
-    ],
-  },
-  {
-    when: "2026-04-26",
-    tag: "v0.5",
-    items: [
-      "**Per-carrier analytics** - see which markets actually quote back, sorted by bind rate.",
-      "**CSV bulk import** for carriers - paste a 25-row spreadsheet, all carriers added at once.",
-      "**Email signature** in Org settings - drafter uses your literal signature instead of placeholders.",
-      "**Live health pill** in dashboard header - green/amber indicator showing all subsystems live or some on stubs.",
-      "Public **/try** demo page - pre-baked triage result, no signup required.",
-      "Public **/docs** REST API reference and **/version** build metadata endpoint.",
-    ],
-  },
-  {
-    when: "2026-04-26",
-    tag: "v0.4",
-    items: [
-      "**Multi-user team invites** with admin/csr roles. Magic-link sign-in, no shared passwords.",
-      "**Stripe Customer Portal** - paid customers self-serve subscription, card, invoices.",
-      "**API key rotate** in Settings - invalidates the old bearer instantly, audit-logged.",
-      "**Audit log** page at /app/audit, filterable by event type.",
-      "**Notifications on triage.completed** - Slack/Teams pings with top match + draft count.",
-      "Reply tracking inline on each draft - sky `↩ replied` badge, full carrier reply panel, `★ BOUND $X` pill.",
-    ],
-  },
-  {
-    when: "2026-04-26",
-    tag: "v0.3",
-    items: [
-      "**Self-serve signup** at /signup - name + email + brokerage, magic link in 30 seconds.",
-      "**Per-org carrier directory** at /app/carriers - full appetite-rule editor, DB-backed (survives Render restarts).",
-      "Sample carriers auto-seed into every new org so the first triage produces matches zero-click.",
-      "Cross-site session cookie (SameSite=None+Secure) so dashboard at appetitematch.com can call API at onrender.com.",
-      "Phantom ACORD attachments removed - the drafter only references attachments that actually exist.",
-      "Uploaded ACORD PDF is now stored and **auto-attached** on /drafts/[id]/send via SES raw email.",
-    ],
-  },
-  {
-    when: "2026-04-25",
-    tag: "v0.2",
-    items: [
-      "**Stripe live subscriptions** - Pro tier at $499/mo, Customer + Price + Webhook wired.",
-      "**SES outbound** verified on appetitematch.com with DKIM + DMARC alignment.",
-      "**GCP Document AI** wired for ACORD PDF parsing.",
-      "Custom domain at appetitematch.com with auto-renewing SSL.",
-    ],
-  },
-  {
-    when: "2026-04-24",
-    tag: "v0.1",
-    items: [
-      "First public deploy: Render (FastAPI + Postgres) + Vercel (Next.js 15) + AWS Bedrock Claude Sonnet 4.6.",
-      "Dashboard with triage flow: ACORD upload or JSON paste → carrier scoring → drafted carrier emails.",
-      "53 passing API tests covering parse, score, draft, and persistence paths.",
-    ],
-  },
-];
-
-interface Release {
-  when: string;
-  tag: string;
-  items: string[];
-}
 
 export default function ChangelogPage() {
   return (
@@ -90,9 +15,17 @@ export default function ChangelogPage() {
       <SiteHeader />
 
       <section className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
-          What's new
-        </h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
+            What's new
+          </h1>
+          <a
+            href="/feed.xml"
+            className="rounded-md border border-slate-800 px-3 py-1 text-xs text-slate-400 hover:border-slate-700 hover:text-slate-200"
+          >
+            RSS
+          </a>
+        </div>
         <p className="mt-3 text-sm text-slate-400">
           We ship every day. Highlights below; everything is in the public repo.
         </p>
