@@ -123,6 +123,73 @@ X-Triage-Signature: sha256=...`}
           </pre>
         </Section>
 
+        <Section title="Forwarded ACORD email -> auto-triage">
+          <p>
+            Set a forward-inbox alias in{" "}
+            <code className="text-slate-200">Settings → Forward-inbox</code>{" "}
+            (e.g.{" "}
+            <code className="text-slate-200">
+              triage+yourorg@appetitematch.com
+            </code>
+            ). Retail agents forward an ACORD-attached email there; AWS SES
+            drops the raw RFC822 in S3, a Lambda parses MIME, base64s
+            attachments, HMAC-signs, and POSTs:
+          </p>
+          <pre className="mt-3 rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-300">
+            {`POST ${API_URL}/webhooks/email
+
+# Body (Postmark-shaped)
+{
+  "to": "triage+yourorg@appetitematch.com",
+  "from_address": "tariq@gulfcoast.example",
+  "subject": "Sunrise HVAC renewal",
+  "body": "...email body...",
+  "attachments": [
+    {
+      "filename": "acord-125.pdf",
+      "content_type": "application/pdf",
+      "content_base64": "..."
+    }
+  ]
+}
+
+# Signed:
+X-Triage-Signature: sha256=...`}
+          </pre>
+          <p className="mt-3">
+            On match, returns a full{" "}
+            <code className="text-slate-200">TriageResult</code>; the run also
+            shows up in{" "}
+            <Link href="/app" className="text-emerald-400 hover:underline">
+              /app
+            </Link>{" "}
+            history immediately. On no-match (e.g. wrong{" "}
+            <code className="text-slate-200">to</code> address), returns{" "}
+            <code className="text-slate-200">{`{"status":"unmatched"}`}</code>.
+          </p>
+          <p className="mt-3">
+            Reference Lambda + setup steps:{" "}
+            <code className="text-slate-200">infra/lambda/ses_inbound.py</code>
+            {" + "}
+            <code className="text-slate-200">SES_INBOUND_SETUP.md</code> in
+            the repo.
+          </p>
+        </Section>
+
+        <Section title="Rotate the webhook secret">
+          <pre className="rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-300">
+            {`curl -X POST -H "Authorization: Bearer <your-key>" \\
+  ${API_URL}/me/webhook-secret/rotate
+# -> {"webhook_secret":"whsec_..."}`}
+          </pre>
+          <p className="mt-3 text-slate-400">
+            Rotate after any suspected leak. Update the SES Inbound Lambda's
+            <code className="ml-1 text-slate-200">WEBHOOK_SECRET</code> env
+            var atomically - the API will 401 inbound payloads signed with
+            the previous secret.
+          </p>
+        </Section>
+
         <Section title="Full OpenAPI surface">
           <p>
             Every endpoint is documented with request/response schemas at the{" "}
