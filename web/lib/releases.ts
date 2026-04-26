@@ -52,6 +52,10 @@ export const RELEASES: Release[] = [
       "**/app/queue** - cross-run draft inbox grouped by status (Drafted | Sent | Replied | Bound | Declined). 'Send all' batch action on the Drafted tab.",
       "**'What we believe' manifesto** section on the landing page.",
       "**Auto-scroll to result** on /app after Run triage on mobile viewports.",
+      "**Bulk outcome marking** on /app/queue (Sent / Replied tabs) - select rows, Mark bound / Mark declined.",
+      "**'Run another triage' button** under the result panel - resets form, scrolls to top.",
+      "**submission_id pill** next to the LLM summary so brokers can reference a run.",
+      "**Footer**: Changelog + RSS links. Invite emails: name the role + sign-off.",
     ],
   },
   {
