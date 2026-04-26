@@ -131,8 +131,22 @@ def _startup() -> None:
 
 
 @app.get("/healthz")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+def healthz() -> dict[str, Any]:
+    """Health check used by Render/k8s/uptime monitors. Always 200 unless
+    we're catastrophically broken; the body breaks down what's reachable
+    so /status can show subsystem indicators."""
+    db_ok = False
+    try:
+        with session_scope() as session:
+            from sqlalchemy import text
+            session.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:  # pragma: no cover - tested via /status
+        db_ok = False
+    return {
+        "status": "ok",
+        "db": "up" if db_ok else "down",
+    }
 
 
 @app.get("/version")

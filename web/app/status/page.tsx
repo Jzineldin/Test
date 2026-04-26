@@ -18,12 +18,18 @@ interface Version {
   llm?: string;
 }
 
+interface Health {
+  status?: string;
+  db?: string;
+}
+
 export default function StatusPage() {
   const [version, setVersion] = useState<Version | null>(null);
   const [healthy, setHealthy] = useState<boolean | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +43,13 @@ export default function StatusPage() {
         if (cancelled) return;
         setLatencyMs(Math.round(performance.now() - t0));
         setHealthy(healthRes.ok);
+        if (healthRes.ok) {
+          try {
+            setHealth(await healthRes.json());
+          } catch {
+            /* /healthz might return text in dev; ignore */
+          }
+        }
         if (versionRes.ok) setVersion(await versionRes.json());
         setLastChecked(new Date());
       } catch {
@@ -103,6 +116,9 @@ export default function StatusPage() {
             <dl className="mt-6 grid grid-cols-2 gap-y-3 text-xs">
               <Row label="Build">{version.git_sha ?? "dev"}</Row>
               <Row label="Branch">{version.branch ?? "-"}</Row>
+              <Row label="Database">
+                <Badge mode={health?.db ?? "?"} />
+              </Row>
               <Row label="LLM">
                 <Badge mode={version.llm ?? "?"} />
               </Row>
@@ -151,12 +167,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function Badge({ mode }: { mode: string }) {
-  const live = mode !== "stub" && mode !== "?";
+  const down = mode === "down";
+  const live = !down && mode !== "stub" && mode !== "?";
   return (
     <span
       className={
         "inline-block rounded-full px-2 py-0.5 text-[11px] " +
-        (live
+        (down
+          ? "bg-rose-500/15 text-rose-300"
+          : live
           ? "bg-emerald-500/15 text-emerald-300"
           : "bg-amber-500/15 text-amber-300")
       }
