@@ -930,6 +930,40 @@ def audit(
         ]
 
 
+@app.get("/audit/export.csv")
+def audit_export_csv(org: CurrentOrg = Depends(current_org)):
+    """Stream the audit log as CSV - SOC 2 evidence collection."""
+    import csv
+    import io
+    import json as _json
+
+    from fastapi.responses import StreamingResponse
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "created_at", "event_type", "actor", "target_id", "details"])
+    with session_scope() as session:
+        for r in list_audit_events(session, org_id=org.id, limit=10_000):
+            writer.writerow([
+                r.id,
+                r.created_at.isoformat() if r.created_at else "",
+                r.event_type,
+                r.actor or "",
+                r.target_id or "",
+                _json.dumps(r.details or {}, separators=(",", ":")),
+            ])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="audit-{org.slug}.csv"'
+            ),
+        },
+    )
+
+
 class DraftStatus(BaseModel):
     id: int
     carrier_id: str

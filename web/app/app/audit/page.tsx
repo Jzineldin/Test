@@ -85,12 +85,20 @@ export default function AuditPage() {
         title="Audit log"
         subtitle="Every state change is recorded. Useful for E&O incident reviews and SOC 2 evidence collection."
         rightSlot={
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="filter by event type…"
-            className="w-full max-w-xs rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none sm:w-56"
-          />
+          <>
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="filter by event type…"
+              className="w-full max-w-xs rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none sm:w-56"
+            />
+            <a
+              href={`${API_URL}/audit/export.csv`}
+              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+            >
+              Export CSV
+            </a>
+          </>
         }
       />
 
