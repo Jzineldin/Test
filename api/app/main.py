@@ -532,6 +532,24 @@ def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
         return {"api_key": new_key}
 
 
+@app.post("/me/webhook-secret/rotate")
+def rotate_webhook_secret(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
+    """Mint a new HMAC secret for /webhooks/inbound and /webhooks/email.
+    The Lambda forwarder must be updated with the new value before the
+    next inbound email arrives, otherwise signature verification will 401."""
+    _require_admin(org)
+    from .db.orgs import generate_webhook_secret
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        new_secret = generate_webhook_secret()
+        row.webhook_secret = new_secret
+        record_audit_event(
+            session, org_id=org.id, event_type="webhook_secret.rotated",
+        )
+        return {"webhook_secret": new_secret}
+
+
 def _org_carriers(org_id: int) -> list[Carrier]:
     """Read carriers for an org, seeding the bundled samples on first call.
 

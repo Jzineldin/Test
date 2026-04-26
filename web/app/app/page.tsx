@@ -573,6 +573,7 @@ function SettingsPanel({
       </div>
 
       <ApiKeyManager apiKey={apiKey} />
+      <WebhookSecretManager apiKey={apiKey} />
       <BillingPortalButton apiKey={apiKey} />
     </section>
   );
@@ -619,6 +620,85 @@ function BillingPortalButton({ apiKey }: { apiKey: string }) {
       {error && (
         <p className="mt-2 text-xs text-rose-300">{error}</p>
       )}
+    </div>
+  );
+}
+
+function WebhookSecretManager({ apiKey }: { apiKey: string }) {
+  const [secret, setSecret] = useState<string | null>(null);
+  const [rotating, setRotating] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    fetch(`${API_URL}/me`, {
+      credentials: "include",
+      headers: authHeaders(apiKey),
+    })
+      .then((r) => r.json())
+      .then((b) => setSecret(b.webhook_secret ?? null));
+  }, [apiKey]);
+
+  async function rotate() {
+    if (
+      !confirm(
+        "Rotating invalidates the current webhook_secret immediately. The SES Inbound Lambda (or any other forwarder) will start 401-ing until you update its WEBHOOK_SECRET env var. Continue?",
+      )
+    ) {
+      return;
+    }
+    setRotating(true);
+    const r = await fetch(`${API_URL}/me/webhook-secret/rotate`, {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(apiKey),
+    });
+    setRotating(false);
+    if (r.ok) {
+      const next = (await r.json()).webhook_secret as string;
+      setSecret(next);
+      toast.push("Webhook secret rotated", "success");
+    } else {
+      toast.push(`Rotate failed: ${r.status}`, "error");
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-md border border-slate-800 bg-slate-950 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+        Webhook secret
+      </h3>
+      <p className="mt-1 text-xs text-slate-500">
+        HMAC key the SES Inbound Lambda (and /webhooks/inbound) signs
+        payloads with. Header format:{" "}
+        <code className="text-slate-300">X-Triage-Signature: sha256=&lt;hex&gt;</code>.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {secret ? (
+          <code className="break-all rounded border border-slate-800 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-200">
+            {secret}
+          </code>
+        ) : (
+          <span className="text-xs text-slate-500">Loading…</span>
+        )}
+        <button
+          onClick={rotate}
+          disabled={rotating}
+          className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-950 disabled:opacity-50"
+        >
+          {rotating ? "Rotating…" : "Rotate"}
+        </button>
+        {secret && (
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(secret);
+              toast.push("Copied", "success");
+            }}
+            className="text-xs text-emerald-400 hover:underline"
+          >
+            Copy
+          </button>
+        )}
+      </div>
     </div>
   );
 }

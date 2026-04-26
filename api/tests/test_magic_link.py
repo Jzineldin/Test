@@ -329,6 +329,20 @@ def test_rotate_api_key_changes_value_and_invalidates_old(client):
     assert good_after == 200
 
 
+def test_rotate_webhook_secret_changes_value(client):
+    user_id = _seed_user(client)
+    _login_as_admin(client, user_id)
+
+    old = client.get("/me").json()["webhook_secret"]
+    r = client.post("/me/webhook-secret/rotate")
+    assert r.status_code == 200
+    new = r.json()["webhook_secret"]
+    assert new != old
+    assert new.startswith("whsec_")
+    # /me now returns the rotated value.
+    assert client.get("/me").json()["webhook_secret"] == new
+
+
 def test_csr_role_blocks_admin_endpoints(client):
     """A CSR-cookie-authed user can't mutate carriers, settings, or
     rotate the api key."""
@@ -354,6 +368,7 @@ def test_csr_role_blocks_admin_endpoints(client):
     assert client.delete("/carriers/anything").status_code == 403
     assert client.patch("/me", json={"name": "X"}).status_code == 403
     assert client.post("/me/api-key/rotate").status_code == 403
+    assert client.post("/me/webhook-secret/rotate").status_code == 403
     # CSRs CAN read and triage.
     assert client.get("/me").status_code == 200
     assert client.get("/me/api-key").status_code == 200
