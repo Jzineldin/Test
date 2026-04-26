@@ -23,6 +23,8 @@ export const RELEASES: Release[] = [
       "**Audit CSV export** for SOC 2 evidence collection.",
       "**History filter by carrier** - 'show me every triage where Atlas matched'.",
       "**Changelog RSS** at /feed.xml.",
+      "**Saved JSON templates** in /app - localStorage-backed; save the current submission shape and reload it later.",
+      "**Send test notification** button in Settings - fire a synthetic Slack/Teams ping to verify the webhook URL works without waiting for a real triage.",
     ],
   },
   {
