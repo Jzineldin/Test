@@ -301,6 +301,7 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <HealthPill />
           {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
           <Link
             href="/app/carriers"
@@ -1213,6 +1214,73 @@ function WelcomeBanner() {
         ))}
       </ol>
     </section>
+  );
+}
+
+function HealthPill() {
+  const [info, setInfo] = useState<{
+    git_sha?: string;
+    stripe?: string;
+    ses?: string;
+    docai?: string;
+    llm?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/version`)
+      .then((r) => r.ok ? r.json() : null)
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+
+  if (!info) return null;
+
+  const subsystems = [
+    { k: "llm", v: info.llm ?? "?" },
+    { k: "ses", v: info.ses ?? "?" },
+    { k: "docai", v: info.docai ?? "?" },
+    { k: "stripe", v: info.stripe ?? "?" },
+  ];
+  const allLive = subsystems.every((s) => s.v !== "stub" && s.v !== "?");
+
+  return (
+    <div className="group relative">
+      <span
+        className={
+          "inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] " +
+          (allLive
+            ? "border border-emerald-700/40 bg-emerald-500/10 text-emerald-300"
+            : "border border-amber-700/40 bg-amber-500/10 text-amber-300")
+        }
+      >
+        <span
+          className={
+            "size-1.5 rounded-full " +
+            (allLive ? "bg-emerald-400" : "bg-amber-400")
+          }
+        />
+        {allLive ? "All systems live" : "Some subsystems on stubs"}
+      </span>
+      <div className="invisible absolute right-0 top-full z-10 mt-2 w-72 rounded-md border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          build {info.git_sha ?? "dev"}
+        </p>
+        {subsystems.map((s) => (
+          <p key={s.k} className="flex justify-between py-0.5">
+            <span className="text-slate-500">{s.k}</span>
+            <span
+              className={
+                s.v === "stub" || s.v === "?"
+                  ? "text-amber-300"
+                  : "text-emerald-300"
+              }
+            >
+              {s.v}
+            </span>
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 
