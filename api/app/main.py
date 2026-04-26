@@ -873,6 +873,34 @@ async def triage_upload(
     )
 
 
+class AppetiteCheckOut(BaseModel):
+    in_appetite: list[dict[str, str]]
+    out_of_appetite: list[dict[str, str]]
+
+
+@app.post("/carriers/check", response_model=AppetiteCheckOut)
+def check_appetite(
+    submission: Submission, org: CurrentOrg = Depends(current_org),
+) -> AppetiteCheckOut:
+    """Run only the deterministic prefilter (state, line, NAICS, revenue)
+    against the org's carrier directory. No LLM, no persistence, no quota.
+    Lets brokers do quick 'who could even write this?' exploration before
+    spending a triage on it."""
+    from .agent.carriers import prefilter
+    carriers = _org_carriers(org.id)
+    kept = prefilter(carriers, submission)
+    kept_ids = {c.carrier_id for c in kept}
+    return AppetiteCheckOut(
+        in_appetite=[
+            {"carrier_id": c.carrier_id, "name": c.name} for c in kept
+        ],
+        out_of_appetite=[
+            {"carrier_id": c.carrier_id, "name": c.name}
+            for c in carriers if c.carrier_id not in kept_ids
+        ],
+    )
+
+
 @app.post("/triage/parse-only", response_model=Submission)
 async def triage_parse_only(
     file: UploadFile = File(...),

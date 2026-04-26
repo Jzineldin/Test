@@ -366,6 +366,49 @@ export default function Home() {
             {mode === "json" && (
               <>
                 <button
+                  onClick={async () => {
+                    let parsed: unknown;
+                    try {
+                      parsed = JSON.parse(submissionJson);
+                    } catch {
+                      toast.push("JSON is invalid; fix it first.", "error");
+                      return;
+                    }
+                    setLoading(true);
+                    try {
+                      const res = await fetch(`${API_URL}/carriers/check`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: {
+                          "Content-Type": "application/json",
+                          ...authHeaders(apiKey),
+                        },
+                        body: JSON.stringify(parsed),
+                      });
+                      if (!res.ok) {
+                        toast.push(`Check failed: ${res.status}`, "error");
+                        return;
+                      }
+                      const body = (await res.json()) as {
+                        in_appetite: { carrier_id: string; name: string }[];
+                        out_of_appetite: { carrier_id: string; name: string }[];
+                      };
+                      const inNames = body.in_appetite.map((c) => c.name).join(", ") || "none";
+                      toast.push(
+                        `${body.in_appetite.length} in / ${body.out_of_appetite.length} out: ${inNames}`,
+                        body.in_appetite.length > 0 ? "success" : "info",
+                      );
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  title="Run only the deterministic prefilter (no LLM, no quota)"
+                  className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900 disabled:opacity-50"
+                >
+                  Check appetite
+                </button>
+                <button
                   onClick={() =>
                     setSubmissionJson(JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2))
                   }

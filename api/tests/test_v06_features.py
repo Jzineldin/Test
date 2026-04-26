@@ -174,6 +174,35 @@ def test_parse_only_503_when_docai_unconfigured(client):
     assert r.status_code == 503
 
 
+def test_check_appetite_partitions_carriers_by_prefilter(client):
+    """The prefilter is deterministic - this submission is GL-only in TX,
+    so any seeded carrier whose appetite excludes TX or doesn't write GL
+    lands in out_of_appetite."""
+    sub = {
+        "submission_id": "CHK-1",
+        "received_at": "2026-04-26",
+        "retail_agent_email": "agent@example.com",
+        "insured": {
+            "legal_name": "Test Co", "naics": "238220",
+            "business_description": "Plumbing", "primary_state": "TX",
+            "annual_revenue": "4200000",
+        },
+        "coverages": [{"line": "general_liability"}],
+    }
+    r = client.post("/carriers/check", json=sub, headers=HEADERS)
+    assert r.status_code == 200
+    body = r.json()
+    total = len(body["in_appetite"]) + len(body["out_of_appetite"])
+    assert total >= 1, "expected at least the seeded sample carriers"
+    # Returned shape: list of {carrier_id, name} dicts.
+    if body["in_appetite"]:
+        assert "carrier_id" in body["in_appetite"][0]
+        assert "name" in body["in_appetite"][0]
+    # No history was created.
+    history = client.get("/history", headers=HEADERS).json()
+    assert all(h["submission_id"] != "CHK-1" for h in history)
+
+
 def test_parse_only_requires_auth(client):
     r = client.post(
         "/triage/parse-only",

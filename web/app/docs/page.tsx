@@ -60,6 +60,27 @@ export default function DocsPage() {
           </p>
         </Section>
 
+        <Section title="Check appetite without scoring (free, instant)">
+          <p>
+            Run only the deterministic prefilter (state, line, NAICS,
+            revenue band) against your carrier directory. No LLM call, no
+            quota cost, no run created. Useful for back-of-envelope
+            'is this even worth triaging?' checks.
+          </p>
+          <pre className="mt-3 rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-300">
+            {`curl -X POST -H "Authorization: Bearer <your-key>" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "submission_id": "...", "received_at": "2026-04-26",
+        "retail_agent_email": "agent@example.com",
+        "insured": { "legal_name": "...", "naics": "238220",
+                     "primary_state": "TX",
+                     "business_description": "..." },
+        "coverages": [{ "line": "general_liability" }] }' \\
+  ${API_URL}/carriers/check
+# -> {"in_appetite":[...], "out_of_appetite":[...]}`}
+          </pre>
+        </Section>
+
         <Section title="Preview the parser without scoring">
           <p>
             Upload a PDF and get the extracted Submission back without
