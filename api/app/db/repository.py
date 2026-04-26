@@ -70,6 +70,7 @@ def list_triage_runs(
     insured_search: str | None = None,
     state: str | None = None,
     since: datetime | None = None,
+    carrier_id: str | None = None,
 ) -> list[TriageRun]:
     """Most recent first, scoped to org.
 
@@ -77,6 +78,7 @@ def list_triage_runs(
       * insured_search - substring match on insured_name (case-insensitive)
       * state          - exact match on primary_state ('TX', 'CA', ...)
       * since          - only runs created after this timestamp
+      * carrier_id     - only runs that produced a draft for this carrier
     """
     # id DESC breaks ties when two runs land in the same DB clock tick.
     stmt = (
@@ -93,6 +95,14 @@ def list_triage_runs(
         # Normalize the cutoff so SQLite's tz-naive storage can compare
         cutoff = since.replace(tzinfo=None) if since.tzinfo else since
         stmt = stmt.where(TriageRun.created_at >= cutoff)
+    if carrier_id:
+        stmt = stmt.where(
+            TriageRun.id.in_(
+                select(DraftedEmailRow.run_id).where(
+                    DraftedEmailRow.carrier_id == carrier_id,
+                ),
+            ),
+        )
     return list(session.execute(stmt).scalars())
 
 

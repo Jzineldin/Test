@@ -58,7 +58,7 @@ export default function Home() {
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [report, setReport] = useState<ReportPayload | null>(null);
   const [carrierStats, setCarrierStats] = useState<CarrierStats[]>([]);
-  const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "" });
+  const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "", carrier_id: "" });
   const [showSettings, setShowSettings] = useState(false);
   const [digest, setDigest] = useState<DigestItem[]>([]);
 
@@ -112,6 +112,7 @@ export default function Home() {
       const params = new URLSearchParams({ limit: "20" });
       if (historyQuery.insured) params.set("insured", historyQuery.insured);
       if (historyQuery.state) params.set("state", historyQuery.state);
+      if (historyQuery.carrier_id) params.set("carrier_id", historyQuery.carrier_id);
       const res = await fetch(`${API_URL}/history?${params}`, {
         credentials: "include",
       headers: authHeaders(apiKey),
@@ -443,6 +444,7 @@ export default function Home() {
         apiKey={apiKey}
         query={historyQuery}
         onQueryChange={setHistoryQuery}
+        carrierStats={carrierStats}
       />
       </div>
     </main>
@@ -911,12 +913,14 @@ function History({
   apiKey,
   query,
   onQueryChange,
+  carrierStats,
 }: {
   history: TriageRunSummary[];
   onOpen: (id: number) => void;
   apiKey: string;
-  query: { insured: string; state: string };
-  onQueryChange: (q: { insured: string; state: string }) => void;
+  query: { insured: string; state: string; carrier_id: string };
+  onQueryChange: (q: { insured: string; state: string; carrier_id: string }) => void;
+  carrierStats: CarrierStats[];
 }) {
   function downloadCsv() {
     // Trigger an authed download via a temporary anchor + fetch.
@@ -953,6 +957,22 @@ function History({
             placeholder="ST"
             className="w-16 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-center text-xs uppercase text-slate-200 focus:border-emerald-500 focus:outline-none"
           />
+          {carrierStats.length > 0 && (
+            <select
+              value={query.carrier_id}
+              onChange={(e) =>
+                onQueryChange({ ...query, carrier_id: e.target.value })
+              }
+              className="rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Any carrier</option>
+              {carrierStats.map((s) => (
+                <option key={s.carrier_id} value={s.carrier_id}>
+                  {s.carrier_id}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={downloadCsv}
             className="rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-900"

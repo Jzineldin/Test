@@ -877,6 +877,7 @@ def history(
     insured: str | None = None,
     state: str | None = None,
     since: datetime | None = None,
+    carrier_id: str | None = None,
     org: CurrentOrg = Depends(current_org),
 ) -> list[TriageRunSummary]:
     with session_scope() as session:
@@ -887,6 +888,7 @@ def history(
             insured_search=insured,
             state=state,
             since=since,
+            carrier_id=carrier_id,
         )
         return [
             TriageRunSummary(

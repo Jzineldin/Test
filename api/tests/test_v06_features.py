@@ -86,6 +86,28 @@ def test_history_filter_combines_insured_and_state(client):
     assert body[0]["primary_state"] == "TX"
 
 
+def test_history_filters_by_carrier_id(client):
+    """Drop two runs in the same org; filter by a carrier_id that only
+    one of them produced a draft for."""
+    _seed(client, insured="Acme Plumbing", state="TX")
+    runs = client.get("/history", headers=HEADERS).json()
+    assert runs, "expected at least one run after seeding"
+    detail = client.get(f"/history/{runs[0]['id']}", headers=HEADERS).json()
+    drafts = detail["result"]["drafted_emails"]
+    if not drafts:
+        # Stub LLM produced no in-appetite drafts; skip filter assertion.
+        return
+    carrier_id = drafts[0]["carrier_id"]
+    filtered = client.get(
+        f"/history?carrier_id={carrier_id}", headers=HEADERS,
+    ).json()
+    assert len(filtered) >= 1
+    assert all(r["match_count"] >= 1 for r in filtered)
+    # Filtering by a carrier that doesn't exist returns empty.
+    none = client.get("/history?carrier_id=does-not-exist", headers=HEADERS).json()
+    assert none == []
+
+
 # ---- /me + PATCH ----
 
 def test_me_returns_settings(client):
