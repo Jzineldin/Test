@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
@@ -285,6 +286,12 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
+          <Link
+            href="/app/carriers"
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Carriers
+          </Link>
           <button
             onClick={() => setShowSettings((v) => !v)}
             className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
@@ -987,6 +994,9 @@ function DraftedEmails({
       <div className="space-y-4">
         {drafts.map((d) => {
           const isSent = Boolean(d.sent_at);
+          const hasReply = Boolean(d.quote_replied_at);
+          const isBound = d.outcome === "bound";
+          const isDeclined = d.outcome === "declined";
           return (
             <article
               key={d.carrier_id}
@@ -994,10 +1004,29 @@ function DraftedEmails({
             >
               <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-slate-400">
                 <span>To: <span className="text-slate-200">{d.to}</span></span>
-                <span>Attach: {d.attachments.join(", ")}</span>
+                {d.attachments.length > 0 && (
+                  <span>Attach: {d.attachments.join(", ")}</span>
+                )}
                 {isSent && (
                   <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
                     ✓ sent {new Date(d.sent_at!).toLocaleString()}
+                  </span>
+                )}
+                {hasReply && (
+                  <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300">
+                    ↩ replied {new Date(d.quote_replied_at!).toLocaleString()}
+                  </span>
+                )}
+                {isBound && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
+                    ★ BOUND
+                    {d.bound_premium_cents != null &&
+                      ` · $${(d.bound_premium_cents / 100).toLocaleString()}`}
+                  </span>
+                )}
+                {isDeclined && (
+                  <span className="rounded-full bg-slate-700/40 px-2 py-0.5 text-slate-400">
+                    declined
                   </span>
                 )}
               </div>
@@ -1005,6 +1034,16 @@ function DraftedEmails({
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-300">
                 {d.body}
               </pre>
+              {hasReply && d.quote_reply_body && (
+                <div className="mt-4 rounded-md border border-sky-800 bg-sky-500/5 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-sky-300">
+                    Carrier reply
+                  </p>
+                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-200">
+                    {d.quote_reply_body}
+                  </pre>
+                </div>
+              )}
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => d.id && onSend(d.id)}

@@ -208,3 +208,29 @@ class DraftedEmailRow(Base):
     bound_premium_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     run: Mapped[TriageRun] = relationship(back_populates="drafts")
+
+
+class CarrierRow(Base):
+    """A carrier appetite guide owned by an Org.
+
+    Multi-tenant: every org has its own carrier directory. The four
+    sample carriers in data/carriers/ are auto-seeded into a brand-new
+    org on first signup so the demo flow works without manual setup.
+    """
+    __tablename__ = "carriers"
+    __table_args__ = ({"sqlite_autoincrement": True},)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("orgs.id", ondelete="CASCADE"), index=True,
+    )
+    # External-facing identifier, unique within an org. Same value
+    # appears in the JSON Carrier model; e.g. 'atlas_specialty'.
+    carrier_id: Mapped[str] = mapped_column(String(64), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )

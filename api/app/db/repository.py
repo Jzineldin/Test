@@ -197,3 +197,69 @@ def get_triage_run(
         .options(selectinload(TriageRun.matches), selectinload(TriageRun.drafts))
     )
     return session.execute(stmt).scalar_one_or_none()
+
+
+def list_carrier_payloads(session: Session, *, org_id: int) -> list[dict]:
+    """Return raw JSON payloads for every carrier the org owns."""
+    from .models import CarrierRow
+    rows = session.execute(
+        select(CarrierRow).where(CarrierRow.org_id == org_id)
+        .order_by(CarrierRow.carrier_id)
+    ).scalars().all()
+    return [r.payload for r in rows]
+
+
+def upsert_carrier_payload(
+    session: Session, *, org_id: int, carrier_id: str, payload: dict,
+) -> dict:
+    """Create or update a carrier row for this org. Returns the payload."""
+    from .models import CarrierRow
+    existing = session.execute(
+        select(CarrierRow).where(
+            CarrierRow.org_id == org_id, CarrierRow.carrier_id == carrier_id,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        existing.payload = payload
+    else:
+        session.add(CarrierRow(org_id=org_id, carrier_id=carrier_id, payload=payload))
+    session.flush()
+    return payload
+
+
+def delete_carrier(session: Session, *, org_id: int, carrier_id: str) -> bool:
+    """Delete one carrier row. Returns True if a row was removed."""
+    from .models import CarrierRow
+    row = session.execute(
+        select(CarrierRow).where(
+            CarrierRow.org_id == org_id, CarrierRow.carrier_id == carrier_id,
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return False
+    session.delete(row)
+    return True
+
+
+def seed_default_carriers(
+    session: Session, *, org_id: int, payloads: list[dict],
+) -> int:
+    """Idempotent: create rows for any carrier_ids the org doesn't have yet.
+    Returns the count of newly-created rows. Used to bootstrap a fresh org
+    with the bundled sample carriers so signup→triage works zero-click."""
+    from .models import CarrierRow
+    existing_ids = {
+        r for (r,) in session.execute(
+            select(CarrierRow.carrier_id).where(CarrierRow.org_id == org_id)
+        ).all()
+    }
+    added = 0
+    for p in payloads:
+        cid = p.get("carrier_id")
+        if not cid or cid in existing_ids:
+            continue
+        session.add(CarrierRow(org_id=org_id, carrier_id=cid, payload=p))
+        added += 1
+    if added:
+        session.flush()
+    return added

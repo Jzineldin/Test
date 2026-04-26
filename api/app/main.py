@@ -27,19 +27,23 @@ from .billing import current_period_usage, get_client as get_billing_client
 from .limits import limiter
 from .db import (
     create_org,
+    delete_carrier,
     ensure_demo_org,
     get_draft,
     get_triage_run,
     init_db,
     list_audit_events,
+    list_carrier_payloads,
     list_triage_runs,
     mark_draft_sent,
     record_audit_event,
     record_quote_reply,
     save_triage_run,
+    seed_default_carriers,
     session_scope,
     set_draft_outcome,
     slugify_org_name,
+    upsert_carrier_payload,
 )
 from .db.models import User as UserRow
 from .email import get_client as get_email_client
@@ -299,30 +303,67 @@ def update_settings(
         }
 
 
+def _org_carriers(org_id: int) -> list[Carrier]:
+    """Read carriers for an org, seeding the bundled samples on first call.
+
+    A brand-new org has no carriers yet — without seeding, their first
+    triage would return 'no carriers passed prefilter' and the demo
+    falls flat. Seeding once at first read is idempotent and only
+    runs against orgs that haven't customized anything."""
+    with session_scope() as session:
+        payloads = list_carrier_payloads(session, org_id=org_id)
+        if not payloads:
+            samples = [
+                c.model_dump(mode="json") for c in load_carriers(CARRIERS_DIR)
+            ]
+            if samples:
+                seed_default_carriers(session, org_id=org_id, payloads=samples)
+                payloads = samples
+    return [Carrier.model_validate(p) for p in payloads]
+
+
 @app.get("/carriers", response_model=list[Carrier])
-def list_carriers(_: CurrentOrg = Depends(current_org)) -> list[Carrier]:
-    return load_carriers(CARRIERS_DIR)
+def list_carriers(org: CurrentOrg = Depends(current_org)) -> list[Carrier]:
+    return _org_carriers(org.id)
 
 
 @app.post("/carriers", response_model=Carrier, status_code=201)
 def upsert_carrier(
-    carrier: Carrier, _: CurrentOrg = Depends(current_org),
+    carrier: Carrier, org: CurrentOrg = Depends(current_org),
 ) -> Carrier:
-    """Write a carrier appetite guide to disk.
+    """Create or update a carrier in the caller's org-scoped directory.
 
-    Today carriers are JSON files on disk shared across orgs. When we move
-    to per-org carrier libraries this becomes a row in a `carriers` table
-    keyed on (org_id, carrier_id). Same input shape, just different store.
-    """
-    import json
-    target = Path(CARRIERS_DIR) / f"{carrier.carrier_id}.json"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(carrier.model_dump(mode="json"), indent=2))
+    Persisted to the DB so it survives Render restarts; scoped by
+    org_id so brokerages don't leak appetite into each other."""
+    payload = carrier.model_dump(mode="json")
+    with session_scope() as session:
+        upsert_carrier_payload(
+            session, org_id=org.id,
+            carrier_id=carrier.carrier_id, payload=payload,
+        )
+        record_audit_event(
+            session, org_id=org.id, event_type="carrier.upsert",
+            target_id=carrier.carrier_id,
+        )
     return carrier
 
 
-def _carriers_or_503() -> list[Carrier]:
-    carriers = load_carriers(CARRIERS_DIR)
+@app.delete("/carriers/{carrier_id}", status_code=204)
+def delete_carrier_endpoint(
+    carrier_id: str, org: CurrentOrg = Depends(current_org),
+) -> None:
+    with session_scope() as session:
+        if not delete_carrier(session, org_id=org.id, carrier_id=carrier_id):
+            raise HTTPException(404, detail=f"Carrier {carrier_id!r} not found")
+        record_audit_event(
+            session, org_id=org.id, event_type="carrier.delete",
+            target_id=carrier_id,
+        )
+    return None
+
+
+def _carriers_or_503(org_id: int) -> list[Carrier]:
+    carriers = _org_carriers(org_id)
     if not carriers:
         raise HTTPException(503, detail="No carrier appetite guides loaded")
     return carriers
@@ -352,7 +393,7 @@ def _run_and_persist(
     submission_pdf_filename: str | None = None,
 ) -> TriageResult:
     result = triage_submission(
-        submission, _carriers_or_503(),
+        submission, _carriers_or_503(org_id),
         llm=get_client(),
         broker_profile=_broker_profile(org_id),
         attachments=attachments,
@@ -1118,6 +1159,11 @@ def history_detail(
                     "body": d.body,
                     "attachments": d.attachments,
                     "sent_at": d.sent_at,
+                    "quote_replied_at": d.quote_replied_at,
+                    "quote_reply_body": d.quote_reply_body,
+                    "outcome": d.outcome,
+                    "outcome_set_at": d.outcome_set_at,
+                    "bound_premium_cents": d.bound_premium_cents,
                 }
                 for d in run.drafts
             ],

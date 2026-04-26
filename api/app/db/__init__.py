@@ -1,14 +1,18 @@
 from .session import SessionLocal, engine, init_db, session_scope
 from .repository import (
+    delete_carrier,
     get_draft,
     get_triage_run,
     list_audit_events,
+    list_carrier_payloads,
     list_triage_runs,
     mark_draft_sent,
     record_audit_event,
     record_quote_reply,
     save_triage_run,
+    seed_default_carriers,
     set_draft_outcome,
+    upsert_carrier_payload,
 )
 from .orgs import (
     DEMO_API_KEY,
@@ -41,4 +45,8 @@ __all__ = [
     "get_org_by_api_key",
     "get_org_by_slug",
     "slugify_org_name",
+    "list_carrier_payloads",
+    "upsert_carrier_payload",
+    "delete_carrier",
+    "seed_default_carriers",
 ]

@@ -124,6 +124,14 @@ class DraftedEmail(BaseModel):
     body: str
     attachments: list[str] = Field(default_factory=list)
     sent_at: datetime | None = None
+    # Populated when the inbound webhook records a carrier reply or when the
+    # broker sets an outcome. Lets the dashboard render the full state of a
+    # draft inline without per-row /drafts/{id} polling.
+    quote_replied_at: datetime | None = None
+    quote_reply_body: str | None = None
+    outcome: str | None = None
+    outcome_set_at: datetime | None = None
+    bound_premium_cents: int | None = None
 
 
 class TriageResult(BaseModel):

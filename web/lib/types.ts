@@ -64,6 +64,10 @@ export interface DraftedEmail {
   sent_at?: string | null;
   provider_message_id?: string | null;
   quote_replied_at?: string | null;
+  quote_reply_body?: string | null;
+  outcome?: "pending" | "bound" | "declined" | null;
+  outcome_set_at?: string | null;
+  bound_premium_cents?: number | null;
 }
 
 export interface TriageResult {
@@ -71,6 +75,26 @@ export interface TriageResult {
   matches: AppetiteMatch[];
   drafted_emails: DraftedEmail[];
   summary: string;
+}
+
+export interface CarrierAppetiteRule {
+  naics_prefixes: string[];
+  states_in: string[];
+  states_out: string[];
+  lines: string[];
+  revenue_min?: string;
+  revenue_max?: string;
+  notes?: string | null;
+}
+
+export interface Carrier {
+  carrier_id: string;
+  name: string;
+  submission_email: string;
+  underwriter_name?: string | null;
+  typical_quote_back_days: number;
+  notes?: string | null;
+  appetite: CarrierAppetiteRule[];
 }
 
 export interface TriageRunSummary {

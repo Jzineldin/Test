@@ -71,3 +71,41 @@ def test_upsert_overwrites_existing(client):
 
 def test_upsert_requires_auth(client):
     assert client.post("/carriers", json=_sample_carrier()).status_code == 401
+
+
+def test_delete_removes_the_carrier(client):
+    client.post("/carriers", json=_sample_carrier(), headers=HEADERS)
+    assert client.delete("/carriers/test_carrier", headers=HEADERS).status_code == 204
+    listed = client.get("/carriers", headers=HEADERS).json()
+    assert "test_carrier" not in {c["carrier_id"] for c in listed}
+
+
+def test_delete_unknown_carrier_returns_404(client):
+    r = client.delete("/carriers/never_existed", headers=HEADERS)
+    assert r.status_code == 404
+
+
+def test_delete_requires_auth(client):
+    client.post("/carriers", json=_sample_carrier(), headers=HEADERS)
+    assert client.delete("/carriers/test_carrier").status_code == 401
+
+
+def test_org_carriers_are_isolated(client, monkeypatch, tmp_path):
+    """Two orgs upserting the same carrier_id keep independent data."""
+    import app.db as db_pkg
+    from app.db import create_org
+
+    client.post("/carriers", json=_sample_carrier(), headers=HEADERS)
+
+    with db_pkg.session_scope() as session:
+        other = create_org(
+            session, name="Other Brokers", slug="other",
+            api_key="other-org-key",
+        )
+        other_key = other.api_key
+
+    other_headers = {"Authorization": f"Bearer {other_key}"}
+    other_listed = client.get("/carriers", headers=other_headers).json()
+    other_ids = {c["carrier_id"] for c in other_listed}
+    # Other org gets the seeded sample carriers, NOT demo's test_carrier.
+    assert "test_carrier" not in other_ids
