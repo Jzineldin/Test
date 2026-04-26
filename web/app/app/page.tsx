@@ -182,6 +182,21 @@ export default function Home() {
     loadCarrierStats();
   }, [loadHistory, loadUsage, loadReport, loadDigest, loadCarrierStats]);
 
+  // Cmd/Ctrl+Enter from anywhere on the page triggers Run triage when ready.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const wantsRun =
+        (e.metaKey || e.ctrlKey) && e.key === "Enter" && !e.shiftKey;
+      if (!wantsRun) return;
+      if (loading) return;
+      if (mode === "pdf" && !pdfFile) return;
+      e.preventDefault();
+      runTriage();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   async function runTriage() {
     setLoading(true);
     setError(null);
@@ -342,6 +357,7 @@ export default function Home() {
             <button
               onClick={runTriage}
               disabled={loading || (mode === "pdf" && !pdfFile)}
+              title="⌘/Ctrl + Enter"
               className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
             >
               {loading ? "Triaging…" : "Run triage"}
