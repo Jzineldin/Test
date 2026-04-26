@@ -354,7 +354,7 @@ export default function Home() {
             <JsonEditor value={submissionJson} onChange={setSubmissionJson} />
           )}
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
               onClick={runTriage}
               disabled={loading || (mode === "pdf" && !pdfFile)}
@@ -364,14 +364,20 @@ export default function Home() {
               {loading ? "Triaging…" : "Run triage"}
             </button>
             {mode === "json" && (
-              <button
-                onClick={() =>
-                  setSubmissionJson(JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2))
-                }
-                className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
-              >
-                Reset to sample
-              </button>
+              <>
+                <button
+                  onClick={() =>
+                    setSubmissionJson(JSON.stringify(ACME_PLUMBING_SUBMISSION, null, 2))
+                  }
+                  className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
+                >
+                  Reset to sample
+                </button>
+                <JsonTemplates
+                  current={submissionJson}
+                  onLoad={setSubmissionJson}
+                />
+              </>
             )}
             {mode === "pdf" && pdfFile && (
               <button
@@ -1196,6 +1202,115 @@ function PdfDropzone({
         </>
       )}
     </label>
+  );
+}
+
+function JsonTemplates({
+  current,
+  onLoad,
+}: {
+  current: string;
+  onLoad: (v: string) => void;
+}) {
+  const STORAGE_KEY = "submission-templates";
+  const [open, setOpen] = useState(false);
+  const [templates, setTemplates] = useState<Record<string, string>>({});
+  const toast = useToast();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setTemplates(JSON.parse(raw) as Record<string, string>);
+    } catch {
+      /* corrupt storage; ignore */
+    }
+  }, []);
+
+  function persist(next: Record<string, string>) {
+    setTemplates(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  function saveAs() {
+    try {
+      JSON.parse(current);
+    } catch {
+      toast.push("JSON is invalid; fix it before saving as a template.", "error");
+      return;
+    }
+    const name = prompt("Template name (e.g. 'Habitational FL', 'HVAC')")?.trim();
+    if (!name) return;
+    persist({ ...templates, [name]: current });
+    toast.push(`Saved template "${name}"`, "success");
+    setOpen(false);
+  }
+
+  function load(name: string) {
+    onLoad(templates[name]);
+    toast.push(`Loaded template "${name}"`, "success");
+    setOpen(false);
+  }
+
+  function remove(name: string) {
+    if (!confirm(`Delete template "${name}"?`)) return;
+    const next = { ...templates };
+    delete next[name];
+    persist(next);
+  }
+
+  const names = Object.keys(templates).sort();
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900"
+      >
+        Templates {names.length > 0 ? `(${names.length})` : ""} ▾
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-64 rounded-md border border-slate-800 bg-slate-950 p-1 shadow-xl">
+          {names.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-slate-500">
+              No saved templates yet.
+            </p>
+          ) : (
+            names.map((name) => (
+              <div
+                key={name}
+                className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs hover:bg-slate-900"
+              >
+                <button
+                  type="button"
+                  onClick={() => load(name)}
+                  className="flex-1 truncate text-left text-slate-200"
+                >
+                  {name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(name)}
+                  className="text-slate-500 hover:text-rose-300"
+                  aria-label={`Delete ${name}`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
+          <div className="mt-1 border-t border-slate-800 pt-1">
+            <button
+              type="button"
+              onClick={saveAs}
+              className="w-full rounded px-2 py-1.5 text-left text-xs text-emerald-300 hover:bg-slate-900"
+            >
+              + Save current as…
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
