@@ -222,6 +222,77 @@ def test_signup_with_colliding_company_name_appends_suffix(client):
         assert slugs == ["acme", "acme-2"]
 
 
+def _login_as_admin(client, user_id):
+    """Helper: mint a magic-link token, exchange it for a session cookie."""
+    import app.db as db_pkg
+    from app.db.models import User
+    from app.magic_link import issue_magic_link
+    with db_pkg.session_scope() as session:
+        user = session.get(User, user_id)
+        user.role = "admin"
+        token = issue_magic_link(session, user)
+    client.post("/auth/verify", json={"token": token})
+
+
+def test_invite_creates_user_and_emails_link(client):
+    user_id = _seed_user(client)
+    _login_as_admin(client, user_id)
+
+    r = client.post("/me/invite", json={
+        "email": "csr@example.com",
+        "name": "New CSR",
+        "role": "csr",
+    })
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["email"] == "csr@example.com"
+    assert body["role"] == "csr"
+
+    listed = client.get("/me/users").json()
+    emails = {u["email"] for u in listed}
+    assert "csr@example.com" in emails
+
+    from app.email import get_client
+    last = get_client().outbox[-1]
+    assert last.to == "csr@example.com"
+    assert "invited" in last.subject.lower()
+
+
+def test_invite_requires_admin_when_using_cookie(client):
+    """A CSR-role user calling /me/invite gets 403."""
+    user_id = _seed_user(client)
+    # Log in as the seeded user, who is role='csr' by default.
+    import app.db as db_pkg
+    from app.db.models import User
+    from app.magic_link import issue_magic_link
+    with db_pkg.session_scope() as session:
+        token = issue_magic_link(session, session.get(User, user_id))
+    client.post("/auth/verify", json={"token": token})
+
+    r = client.post("/me/invite", json={
+        "email": "x@y.com", "role": "csr",
+    })
+    assert r.status_code == 403
+
+
+def test_remove_user_blocks_last_admin(client):
+    user_id = _seed_user(client)
+    _login_as_admin(client, user_id)
+    r = client.delete(f"/me/users/{user_id}")
+    assert r.status_code == 409
+
+
+def test_remove_csr_succeeds(client):
+    admin_id = _seed_user(client, email="admin@example.com")
+    csr_id = _seed_user(client, email="csr@example.com")
+    _login_as_admin(client, admin_id)
+
+    r = client.delete(f"/me/users/{csr_id}")
+    assert r.status_code == 204
+    listed = client.get("/me/users").json()
+    assert csr_id not in {u["id"] for u in listed}
+
+
 def test_get_api_key_returns_bearer_token(client):
     user_id = _seed_user(client)
     import app.db as db_pkg

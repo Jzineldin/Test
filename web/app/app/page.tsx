@@ -293,6 +293,12 @@ export default function Home() {
             Carriers
           </Link>
           <Link
+            href="/app/users"
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Team
+          </Link>
+          <Link
             href="/app/audit"
             className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
           >

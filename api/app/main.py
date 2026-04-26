@@ -313,6 +313,143 @@ def get_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
         return {"api_key": row.api_key}
 
 
+def _require_admin(org: CurrentOrg) -> None:
+    """Admin-gated routes: invite, remove, plan changes. API-key callers
+    are treated as admin (machine-to-machine bearer is full-trust by
+    design); cookie callers must be users with role='admin'."""
+    if org.user_id is None:
+        return  # API-key auth: trusted machine integration
+    if org.user_role != "admin":
+        raise HTTPException(403, detail="Admin role required")
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    name: str | None
+    role: str
+    created_at: datetime
+    last_login_at: datetime | None
+
+
+@app.get("/me/users", response_model=list[UserOut])
+def list_users(org: CurrentOrg = Depends(current_org)) -> list[UserOut]:
+    """Every user inside the caller's org (admins + CSRs)."""
+    with session_scope() as session:
+        from .db.models import User as UserRow
+        from sqlalchemy import select
+        rows = session.execute(
+            select(UserRow).where(UserRow.org_id == org.id).order_by(UserRow.id)
+        ).scalars().all()
+        return [
+            UserOut(
+                id=u.id, email=u.email, name=u.name, role=u.role,
+                created_at=u.created_at, last_login_at=u.last_login_at,
+            )
+            for u in rows
+        ]
+
+
+class InviteRequest(BaseModel):
+    email: str
+    name: str | None = None
+    role: str = "csr"  # 'admin' | 'csr'
+
+
+@app.post("/me/invite", response_model=UserOut, status_code=201)
+def invite_user(
+    body: InviteRequest, org: CurrentOrg = Depends(current_org),
+) -> UserOut:
+    """Add a teammate to the calling org and mail them a sign-in link.
+
+    Idempotent on email — re-inviting an existing user just sends a fresh
+    magic link instead of erroring or creating a duplicate row."""
+    _require_admin(org)
+    if body.role not in {"admin", "csr"}:
+        raise HTTPException(400, detail="role must be 'admin' or 'csr'")
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, detail="valid email required")
+
+    with session_scope() as session:
+        from .db.models import User as UserRow
+        existing = get_user_by_email(session, email)
+        if existing is not None:
+            if existing.org_id != org.id:
+                raise HTTPException(
+                    409,
+                    detail="Email already belongs to a different org",
+                )
+            user = existing
+        else:
+            user = UserRow(
+                org_id=org.id, email=email,
+                name=(body.name or "").strip() or None,
+                role=body.role,
+            )
+            session.add(user)
+            session.flush()
+
+        token = issue_magic_link(session, user)
+        record_audit_event(
+            session, org_id=org.id, event_type="user.invited",
+            target_id=str(user.id),
+            details={"email": email, "role": body.role},
+        )
+        out = UserOut(
+            id=user.id, email=user.email, name=user.name, role=user.role,
+            created_at=user.created_at, last_login_at=user.last_login_at,
+        )
+
+    base = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
+    link = f"{base}/login/verify?token={token}"
+    email_client = get_email_client()
+    email_client.send(
+        to=email,
+        subject=f"You've been invited to {org.name} on AppetiteMatch",
+        body=(
+            f"Hi {body.name or email.split('@')[0]},\n\n"
+            f"You've been invited to join {org.name}'s submission triage workspace.\n\n"
+            f"Click below to sign in. Link expires in 15 minutes.\n\n"
+            f"{link}\n\n"
+            "If you weren't expecting this, ignore the email.\n"
+        ),
+    )
+    return out
+
+
+@app.delete("/me/users/{user_id}", status_code=204)
+def remove_user(
+    user_id: int, org: CurrentOrg = Depends(current_org),
+) -> None:
+    """Remove a user from the org. Admin-only. Refuses to remove the last
+    admin — there must always be someone who can manage the account."""
+    _require_admin(org)
+    with session_scope() as session:
+        from .db.models import User as UserRow
+        from sqlalchemy import select
+        target = session.get(UserRow, user_id)
+        if target is None or target.org_id != org.id:
+            raise HTTPException(404, detail="User not found in this org")
+        if target.role == "admin":
+            admin_count = session.execute(
+                select(UserRow).where(
+                    UserRow.org_id == org.id, UserRow.role == "admin",
+                )
+            ).scalars().all()
+            if len(admin_count) <= 1:
+                raise HTTPException(
+                    409,
+                    detail="Can't remove the last admin",
+                )
+        session.delete(target)
+        record_audit_event(
+            session, org_id=org.id, event_type="user.removed",
+            target_id=str(user_id),
+        )
+    return None
+
+
 @app.post("/me/api-key/rotate")
 def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
     """Mint a new bearer key, invalidating the old one immediately.
