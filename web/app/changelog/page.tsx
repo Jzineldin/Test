@@ -13,6 +13,12 @@ const RELEASES: Release[] = [
     items: [
       "**Inbound email triage live.** Brokers can forward an ACORD-attached email to triage+slug@appetitematch.com; AWS SES -> S3 -> Lambda parses the MIME, base64s attachments, and POSTs the signed payload to /webhooks/email. End-to-end smoke-tested.",
       "**Animated /try walkthrough** - autoplays the full broker flow on page load (paste, prefilter, score, draft, send, bound) with step controls and replay. No video recording needed.",
+      "**Animated landing hero** - HeroPreview loops paste -> match -> sent -> replied -> bound. Respects prefers-reduced-motion.",
+      "**Carrier search + CSV export** at /app/carriers - filter by name, NAICS, state, line; export round-trips with the bulk importer.",
+      "**Live JSON validation** in the /app submission editor - red border + Format button, catches malformed paste before Run.",
+      "**Keyboard shortcut** Cmd/Ctrl+Enter runs triage from anywhere on /app.",
+      "**/book page** with env-driven calendar embed (NEXT_PUBLIC_BOOKING_URL); Whale-tier CTA on landing + pricing now points there.",
+      "**/status auto-refresh** every 30 seconds with last-checked timestamp.",
     ],
   },
   {

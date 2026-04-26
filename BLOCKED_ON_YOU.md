@@ -131,8 +131,16 @@ Branch: `claude/ai-agent-venture-builder-taoWC` · 134 tests green.
   `appetitematch-ses-inbound` (us-east-1) reads raw mail from
   `s3://appetitematch-ses-inbound/incoming/`, parses MIME,
   HMAC-signs, and POSTs to `/webhooks/email`. Smoke test passed
-  (see triage history). Code lives at `infra/lambda/ses_inbound.py`,
+  (see triage history). Code at `infra/lambda/ses_inbound.py`,
   setup notes at `infra/lambda/SES_INBOUND_SETUP.md`.
+- **Animated /try walkthrough** replaces the demo-recording blocker.
+- **Animated landing hero** that loops paste -> match -> sent -> bound.
+- **/app polish**: carrier search + CSV export, live JSON validation +
+  Format button, Cmd/Ctrl+Enter to run triage.
+- **/book page** for the Whale-tier CTA. Set `NEXT_PUBLIC_BOOKING_URL`
+  in Vercel env to embed Cal.com / Calendly; falls back to mailto.
+- **/status auto-refresh** every 30s with last-checked timestamp.
+- 135 API tests green.
 
 ## What landed this session (high-level)
 
