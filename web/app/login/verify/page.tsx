@@ -26,7 +26,13 @@ function VerifyInner() {
           credentials: "include",
         });
         if (!res.ok) {
-          setError(`Could not verify: ${res.status}. Request a fresh link.`);
+          if (res.status === 401 || res.status === 410) {
+            setError(
+              "This sign-in link has expired or already been used. Magic links work once and expire after 15 minutes - request a fresh one.",
+            );
+          } else {
+            setError(`Could not verify: ${res.status}. Request a fresh link.`);
+          }
           return;
         }
         // First-time signups land in /app/setup; returning users go straight
