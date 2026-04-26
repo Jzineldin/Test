@@ -21,6 +21,8 @@ export const RELEASES: Release[] = [
       "**/book page** with env-driven calendar embed (NEXT_PUBLIC_BOOKING_URL); Whale-tier CTA on landing + pricing now points there.",
       "**/status auto-refresh** every 30 seconds with last-checked timestamp.",
       "**Audit CSV export** for SOC 2 evidence collection.",
+      "**History filter by carrier** - 'show me every triage where Atlas matched'.",
+      "**Changelog RSS** at /feed.xml.",
     ],
   },
   {
