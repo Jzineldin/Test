@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
 import type {
   BillingUsage,
+  CarrierStats,
   DigestItem,
   ReportPayload,
   TriageResult,
@@ -52,6 +53,7 @@ export default function Home() {
   const [authChecked, setAuthChecked] = useState(false);
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [report, setReport] = useState<ReportPayload | null>(null);
+  const [carrierStats, setCarrierStats] = useState<CarrierStats[]>([]);
   const [historyQuery, setHistoryQuery] = useState({ insured: "", state: "" });
   const [showSettings, setShowSettings] = useState(false);
   const [digest, setDigest] = useState<DigestItem[]>([]);
@@ -155,12 +157,26 @@ export default function Home() {
     }
   }, [apiKey, authChecked]);
 
+  const loadCarrierStats = useCallback(async () => {
+    if (!authChecked) return;
+    try {
+      const res = await fetch(`${API_URL}/reports/by-carrier`, {
+        credentials: "include",
+        headers: authHeaders(apiKey),
+      });
+      if (res.ok) setCarrierStats((await res.json()) as CarrierStats[]);
+    } catch {
+      /* best-effort */
+    }
+  }, [apiKey, authChecked]);
+
   useEffect(() => {
     loadHistory();
     loadUsage();
     loadReport();
     loadDigest();
-  }, [loadHistory, loadUsage, loadReport, loadDigest]);
+    loadCarrierStats();
+  }, [loadHistory, loadUsage, loadReport, loadDigest, loadCarrierStats]);
 
   async function runTriage() {
     setLoading(true);
@@ -414,6 +430,7 @@ export default function Home() {
       </section>
 
       {report && <ReportStrip report={report} />}
+      {carrierStats.length > 0 && <CarrierStatsTable stats={carrierStats} />}
       {digest.length > 0 && <DigestPanel items={digest} />}
       <History
         history={history}
@@ -1108,6 +1125,63 @@ function Matches({
         </table>
       </div>
       <p className="mt-3 text-xs italic text-slate-400">{summary}</p>
+    </section>
+  );
+}
+
+function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
+  return (
+    <section className="mt-12 border-t border-slate-800 pt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
+        Per-carrier performance — this period
+      </h2>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="bg-slate-900/40 text-xs uppercase tracking-widest text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Carrier</th>
+              <th className="px-4 py-3">Sent</th>
+              <th className="px-4 py-3">Replied</th>
+              <th className="px-4 py-3">Bound</th>
+              <th className="px-4 py-3">Quote-back</th>
+              <th className="px-4 py-3">Bind rate</th>
+              <th className="px-4 py-3">Avg time-to-quote</th>
+              <th className="px-4 py-3">Bound premium</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map((s) => (
+              <tr
+                key={s.carrier_id}
+                className="border-t border-slate-900 text-slate-300"
+              >
+                <td className="px-4 py-3 font-mono text-xs text-slate-100">
+                  {s.carrier_id}
+                </td>
+                <td className="px-4 py-3">{s.drafts_sent}</td>
+                <td className="px-4 py-3">{s.drafts_replied}</td>
+                <td className="px-4 py-3 text-emerald-300">{s.drafts_bound}</td>
+                <td className="px-4 py-3">
+                  {s.drafts_sent ? `${(s.quote_back_rate * 100).toFixed(0)}%` : "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {s.drafts_replied ? `${(s.bind_rate * 100).toFixed(0)}%` : "—"}
+                </td>
+                <td className="px-4 py-3">
+                  {s.avg_hours_to_quote != null
+                    ? `${s.avg_hours_to_quote.toFixed(1)}h`
+                    : "—"}
+                </td>
+                <td className="px-4 py-3 text-emerald-300">
+                  {s.bound_premium_dollars > 0
+                    ? `$${s.bound_premium_dollars.toLocaleString()}`
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

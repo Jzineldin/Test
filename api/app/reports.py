@@ -91,3 +91,63 @@ def summarize(session: Session, *, org_id: int) -> ReportSummary:
         avg_hours_to_quote=avg_hours,
         bound_premium_dollars=bound_cents / 100.0,
     )
+
+
+@dataclass
+class CarrierStats:
+    carrier_id: str
+    drafts_sent: int
+    drafts_replied: int
+    drafts_bound: int
+    drafts_declined: int
+    quote_back_rate: float
+    bind_rate: float
+    avg_hours_to_quote: float | None
+    bound_premium_dollars: float
+
+
+def by_carrier(session: Session, *, org_id: int) -> list[CarrierStats]:
+    """Per-carrier breakdown for the same period as `summarize`.
+
+    Helps a broker answer: which carriers actually quote back fast?
+    Which ones bind? Which are dead weight in the appetite library?"""
+    start, end = period_bounds()
+    drafts = list(session.execute(
+        select(DraftedEmailRow)
+        .join(TriageRun, DraftedEmailRow.run_id == TriageRun.id)
+        .where(
+            TriageRun.org_id == org_id,
+            TriageRun.created_at >= start,
+            TriageRun.created_at < end,
+        )
+    ).scalars())
+
+    by_id: dict[str, list[DraftedEmailRow]] = {}
+    for d in drafts:
+        by_id.setdefault(d.carrier_id, []).append(d)
+
+    out: list[CarrierStats] = []
+    for cid, rows in by_id.items():
+        sent = [d for d in rows if d.sent_at is not None]
+        replied = [d for d in sent if d.quote_replied_at is not None]
+        bound = [d for d in replied if d.outcome == "bound"]
+        declined = [d for d in replied if d.outcome == "declined"]
+        deltas = [
+            (d.quote_replied_at - d.sent_at).total_seconds() / 3600.0
+            for d in replied if d.sent_at and d.quote_replied_at
+        ]
+        out.append(CarrierStats(
+            carrier_id=cid,
+            drafts_sent=len(sent),
+            drafts_replied=len(replied),
+            drafts_bound=len(bound),
+            drafts_declined=len(declined),
+            quote_back_rate=(len(replied) / len(sent)) if sent else 0.0,
+            bind_rate=(len(bound) / len(replied)) if replied else 0.0,
+            avg_hours_to_quote=(sum(deltas) / len(deltas)) if deltas else None,
+            bound_premium_dollars=sum(
+                d.bound_premium_cents or 0 for d in bound
+            ) / 100.0,
+        ))
+    out.sort(key=lambda s: (s.bind_rate, s.drafts_bound), reverse=True)
+    return out

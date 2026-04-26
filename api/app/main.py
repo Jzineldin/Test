@@ -52,7 +52,7 @@ from .logging import configure_logging
 from .models import Carrier, Submission, TriageResult
 from .notifications import Notification, get_client_for_url
 from .parsers.base import DocAiParser
-from .reports import summarize
+from .reports import by_carrier, summarize
 from .webhook_auth import verify_signature
 from .magic_link import (
     COOKIE_NAME,
@@ -141,6 +141,14 @@ def auth_signup(body: SignupRequest) -> None:
             )
             session.add(user)
             session.flush()
+            # Seed the new org with the bundled sample carriers so their
+            # first triage produces matches without requiring them to
+            # configure carriers first.
+            samples = [
+                c.model_dump(mode="json") for c in load_carriers(CARRIERS_DIR)
+            ]
+            if samples:
+                seed_default_carriers(session, org_id=org.id, payloads=samples)
         else:
             user = existing
         token = issue_magic_link(session, user)
@@ -1026,6 +1034,28 @@ def reports_summary(org: CurrentOrg = Depends(current_org)) -> ReportPayload:
     with session_scope() as session:
         s = summarize(session, org_id=org.id)
     return ReportPayload(**s.__dict__)
+
+
+class CarrierStatsOut(BaseModel):
+    carrier_id: str
+    drafts_sent: int
+    drafts_replied: int
+    drafts_bound: int
+    drafts_declined: int
+    quote_back_rate: float
+    bind_rate: float
+    avg_hours_to_quote: float | None
+    bound_premium_dollars: float
+
+
+@app.get("/reports/by-carrier", response_model=list[CarrierStatsOut])
+def reports_by_carrier(
+    org: CurrentOrg = Depends(current_org),
+) -> list[CarrierStatsOut]:
+    """Per-carrier breakdown of sent/replied/bound metrics for the period."""
+    with session_scope() as session:
+        rows = by_carrier(session, org_id=org.id)
+    return [CarrierStatsOut(**r.__dict__) for r in rows]
 
 
 class DigestItem(BaseModel):

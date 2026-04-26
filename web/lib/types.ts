@@ -44,6 +44,18 @@ export interface ReportPayload {
   bound_premium_dollars: number;
 }
 
+export interface CarrierStats {
+  carrier_id: string;
+  drafts_sent: number;
+  drafts_replied: number;
+  drafts_bound: number;
+  drafts_declined: number;
+  quote_back_rate: number;
+  bind_rate: number;
+  avg_hours_to_quote: number | null;
+  bound_premium_dollars: number;
+}
+
 export interface AppetiteMatch {
   carrier_id: string;
   carrier_name: string;
