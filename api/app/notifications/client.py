@@ -6,7 +6,7 @@ so MS Teams / Discord / a custom webhook drop in trivially.
 
 Each Org carries a `notification_webhook_url`. When set, inbound carrier
 replies trigger a message via the matching client. When unset, nothing
-fires — silent fallback.
+fires - silent fallback.
 """
 from __future__ import annotations
 

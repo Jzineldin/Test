@@ -1,6 +1,6 @@
 """Email send + reply webhook tests.
 
-We never call AWS — StubEmailClient + the in-memory SQLite cover everything.
+We never call AWS - StubEmailClient + the in-memory SQLite cover everything.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def _seed_triage(client) -> int:
     history = client.get("/history", headers=HEADERS).json()
     detail = client.get(f"/history/{history[0]['id']}", headers=HEADERS).json()
     # The detail.result.drafted_emails are the response shape; we need
-    # the underlying draft row id, which the API doesn't echo today —
+    # the underlying draft row id, which the API doesn't echo today -
     # so query by listing the org's run and looking up via /drafts.
     # For the test, fetch the run and inspect drafts via repository.
     import app.db as db_pkg

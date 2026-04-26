@@ -53,7 +53,7 @@ def current_org(
 ) -> CurrentOrg:
     token = _bearer_token(authorization)
 
-    # Prefer session cookie when both are present — more specific identity.
+    # Prefer session cookie when both are present - more specific identity.
     with session_scope() as session:
         if triage_session:
             resolved = resolve_session(session, triage_session)

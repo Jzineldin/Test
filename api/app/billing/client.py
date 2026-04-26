@@ -1,9 +1,9 @@
 """Stripe billing abstraction.
 
 Two implementations:
-  * StubBillingClient — deterministic, in-memory. Default. Lets the
+  * StubBillingClient - deterministic, in-memory. Default. Lets the
                          dashboard's billing flow work in dev without keys.
-  * StripeBillingClient — real stripe-python SDK. Activates when
+  * StripeBillingClient - real stripe-python SDK. Activates when
                            STRIPE_SECRET_KEY is set.
 
 ACP note: this iteration covers standard subscription billing. The
@@ -40,7 +40,7 @@ class BillingClient(Protocol):
 class StubBillingClient:
     """In-memory stand-in. Returns deterministic-looking ids and a fake URL.
 
-    The fake checkout URL is harmless — clicking it just shows Stripe's
+    The fake checkout URL is harmless - clicking it just shows Stripe's
     standard 'session expired' page, which is fine for demoing the flow.
     """
 
@@ -65,7 +65,7 @@ class StubBillingClient:
     def create_portal_session(
         self, *, customer_id: str, return_url: str,
     ) -> str:
-        # Deterministic stub URL — fine for local dev; clicking it shows
+        # Deterministic stub URL - fine for local dev; clicking it shows
         # Stripe's "session expired" page which is harmless.
         return f"https://billing.stripe.com/p/session/stub_{customer_id}"
 

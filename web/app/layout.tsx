@@ -6,7 +6,7 @@ const SITE_URL = "https://appetitematch.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "AppetiteMatch — submission triage for wholesale insurance brokers",
+    default: "AppetiteMatch - submission triage for wholesale insurance brokers",
     template: "%s · AppetiteMatch",
   },
   description:
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "AppetiteMatch" }],
   openGraph: {
-    title: "AppetiteMatch — submission triage for wholesale insurance brokers",
+    title: "AppetiteMatch - submission triage for wholesale insurance brokers",
     description:
       "ACORD in, carrier-ready submissions out. Cuts CSR triage time from 30-90 minutes to seconds.",
     url: SITE_URL,
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AppetiteMatch — submission triage for wholesale brokers",
+    title: "AppetiteMatch - submission triage for wholesale brokers",
     description:
       "ACORD in, carrier-ready submissions out. Cuts CSR triage time from 30-90 minutes to seconds.",
   },

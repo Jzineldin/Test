@@ -5,7 +5,7 @@ Walks the full broker workflow against the running app:
   2. Triage a submission (/triage)
   3. List history (/history)
   4. Fetch full detail (/history/{id})
-  5. Send a drafted email (/drafts/{id}/send) — stub email client
+  5. Send a drafted email (/drafts/{id}/send) - stub email client
   6. Inbound webhook records the carrier's reply (/webhooks/inbound)
   7. Dashboard re-fetches draft → reply is visible
 

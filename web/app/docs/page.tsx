@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "API docs — AppetiteMatch",
+  title: "API docs - AppetiteMatch",
   description:
     "REST API reference for AppetiteMatch. Triage submissions, manage carriers, and track quote-backs programmatically.",
 };

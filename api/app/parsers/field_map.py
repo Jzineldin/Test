@@ -4,7 +4,7 @@ This is intentionally conservative:
   * We only set a field when an alias matches AND the value parses cleanly
   * Unknown fields go into `extra["docai_raw"]` so nothing is lost
   * Required fields that are missing get safe defaults so the Submission
-    still validates — the dashboard surfaces the gaps for human review
+    still validates - the dashboard surfaces the gaps for human review
 
 ACORD field labels vary across carriers and form versions. The alias map
 is the only thing to extend when we encounter a new form quirk.
@@ -108,7 +108,7 @@ def _build_insured(fields: dict[str, str]) -> tuple[Insured, list[str]]:
 
     missing: list[str] = []
     if "legal_name" not in extracted:
-        extracted["legal_name"] = "UNKNOWN — see attached PDF"
+        extracted["legal_name"] = "UNKNOWN - see attached PDF"
         missing.append("legal_name")
     if "primary_state" not in extracted:
         extracted["primary_state"] = "??"

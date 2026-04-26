@@ -13,7 +13,7 @@
       "lines": ["general_liability", "commercial_auto", "umbrella"],
       "revenue_max": "15000000",
       "revenue_min": "500000",
-      "notes": "Artisan contractors only — no new construction GCs."
+      "notes": "Artisan contractors only - no new construction GCs."
     },
     {
       "naics_prefixes": ["531"],

@@ -8,7 +8,7 @@ Two failure modes:
   * Header missing      -> 401 (caller didn't sign)
   * Digest mismatch     -> 401 (wrong secret or tampered payload)
 
-Looking up the org's secret depends on the route — for /webhooks/inbound
+Looking up the org's secret depends on the route - for /webhooks/inbound
 we resolve via provider_message_id after parsing; for /webhooks/email we
 resolve via the `to` field. Both routes therefore validate AFTER the JSON
 is parsed but before any side effects run.
@@ -29,7 +29,7 @@ def expected_signature(secret: str, body: bytes) -> str:
 def verify_signature(*, secret: str, body: bytes, header: str | None) -> None:
     """Raise 401 unless the header matches the expected digest.
 
-    Skips verification when the org has no webhook_secret configured —
+    Skips verification when the org has no webhook_secret configured -
     that's the back-compat path for orgs created before this feature
     landed. New orgs always get a secret.
     """

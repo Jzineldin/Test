@@ -1,4 +1,4 @@
-// Mirrors api/app/models.py — keep in sync until we generate from OpenAPI.
+// Mirrors api/app/models.py - keep in sync until we generate from OpenAPI.
 
 export interface BillingUsage {
   org_id: number;

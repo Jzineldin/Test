@@ -1,6 +1,6 @@
 """ORM models for persisted triage runs.
 
-The schema mirrors the API response shape — TriageRun has many
+The schema mirrors the API response shape - TriageRun has many
 AppetiteMatchRow and many DraftedEmailRow. Submission JSON is stored
 verbatim so we can replay or audit later without losing fidelity.
 """
@@ -28,7 +28,7 @@ class Base(DeclarativeBase):
 
 
 class Org(Base):
-    """A wholesale broker / MGA — the unit of tenancy.
+    """A wholesale broker / MGA - the unit of tenancy.
 
     Every TriageRun belongs to exactly one Org. Authentication is by API
     key today (one Bearer token per Org); user-level identity comes later.
@@ -50,7 +50,7 @@ class Org(Base):
     email_signature: Mapped[str | None] = mapped_column(Text, nullable=True)
     # HMAC secret used to sign /webhooks/inbound + /webhooks/email payloads
     # destined for this org. Auto-generated on org creation; never null in
-    # practice — the column is nullable for migration safety on existing rows.
+    # practice - the column is nullable for migration safety on existing rows.
     webhook_secret: Mapped[str | None] = mapped_column(String(96), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(),
@@ -65,8 +65,8 @@ class User(Base):
     """Identity within an Org.
 
     Roles:
-      * admin   — can change org settings, invite other users, see audit
-      * csr     — runs triage, sends drafts, records outcomes
+      * admin   - can change org settings, invite other users, see audit
+      * csr     - runs triage, sends drafts, records outcomes
     """
     __tablename__ = "users"
 
@@ -87,7 +87,7 @@ class MagicLinkToken(Base):
     """One-shot login token mailed to a user.
 
     Tokens are 32 random bytes hex-encoded. We store the SHA-256 of the
-    token, never the plaintext — matches the auth-cookie pattern.
+    token, never the plaintext - matches the auth-cookie pattern.
     """
     __tablename__ = "magic_link_tokens"
 
@@ -105,7 +105,7 @@ class Session(Base):
     """Active login session.
 
     Cookie value is the SHA-256 of `secret`; the secret never lives in
-    the DB. 30-day rolling expiry — bumped on every authenticated request.
+    the DB. 30-day rolling expiry - bumped on every authenticated request.
     """
     __tablename__ = "sessions"
 

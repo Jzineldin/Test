@@ -108,7 +108,7 @@ def main() -> None:
     if webhook:
         print(f"webhook       reused  {webhook.id}  -> {webhook.url}")
         webhook_secret_note = (
-            "(webhook already existed — Stripe only reveals the signing "
+            "(webhook already existed - Stripe only reveals the signing "
             "secret on creation. If you don't have it saved, delete the "
             "endpoint in the Stripe dashboard and re-run this script.)"
         )

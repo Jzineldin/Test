@@ -1,7 +1,7 @@
 """Thin wrapper around the GCP Document AI Form Parser processor.
 
 Isolates the SDK call so tests can inject a fake. The wrapper returns a
-plain `dict[str, str]` of normalized form-field key/value pairs — that's
+plain `dict[str, str]` of normalized form-field key/value pairs - that's
 the contract the field-mapper consumes.
 
 Set up in production:

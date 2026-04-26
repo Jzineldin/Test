@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 export const alt =
-  "AppetiteMatch — submission triage for wholesale insurance brokers";
+  "AppetiteMatch - submission triage for wholesale insurance brokers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -94,7 +94,7 @@ export default function OpenGraphImage() {
               color: "#34d399",
             }}
           >
-            ✓ Atlas — 0.84
+            ✓ Atlas - 0.84
           </div>
           <div
             style={{
@@ -107,7 +107,7 @@ export default function OpenGraphImage() {
               color: "#7dd3fc",
             }}
           >
-            ↩ Keystone — replied $42k
+            ↩ Keystone - replied $42k
           </div>
           <div
             style={{

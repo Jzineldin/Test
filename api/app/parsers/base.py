@@ -1,8 +1,8 @@
 """Submission intake parsers.
 
 Two implementations:
-  * JsonParser    — accepts already-normalized JSON (used by demo + tests)
-  * DocAiParser   — wraps a DocAiClient (real or fake) + the field mapper
+  * JsonParser    - accepts already-normalized JSON (used by demo + tests)
+  * DocAiParser   - wraps a DocAiClient (real or fake) + the field mapper
 
 Selection happens via `get_parser(source)` so callers don't branch on env.
 """
@@ -36,7 +36,7 @@ class DocAiParser:
 
     Holds a `DocAiClient` so tests can inject a fake. When constructed
     without one, lazily builds a `GoogleDocAiClient` from env vars on
-    first parse — that's the only path that requires GCP credentials.
+    first parse - that's the only path that requires GCP credentials.
     """
 
     def __init__(self, client: DocAiClient | None = None) -> None:

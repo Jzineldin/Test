@@ -1,11 +1,11 @@
 """LLM client abstraction.
 
 Three implementations, picked in priority order:
-  1. BedrockClient   — Claude via AWS Bedrock. Default when AWS creds are
+  1. BedrockClient   - Claude via AWS Bedrock. Default when AWS creds are
                         present (common case for prod deploys on AWS).
-  2. AnthropicClient — Claude via the Anthropic SDK direct. Used when
+  2. AnthropicClient - Claude via the Anthropic SDK direct. Used when
                         ANTHROPIC_API_KEY is set and Bedrock isn't.
-  3. StubClient      — deterministic, no network. Tests + offline demo.
+  3. StubClient      - deterministic, no network. Tests + offline demo.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ class StubClient:
                     "stated band."
                 ),
                 "risk_flags": [
-                    "Loss ratio in PY-2 above 60% — flag for underwriter review",
+                    "Loss ratio in PY-2 above 60% - flag for underwriter review",
                 ],
             })
         return {"matches": matches, "summary": (
@@ -80,7 +80,7 @@ class StubClient:
     @staticmethod
     def _draft_email_stub(user: str) -> dict:
         return {
-            "subject": "New Submission — Acme Plumbing Services LLC — GL/Auto eff 2026-06-01",
+            "subject": "New Submission - Acme Plumbing Services LLC - GL/Auto eff 2026-06-01",
             "body": (
                 "Hi Underwriting,\n\n"
                 "Please find a new submission attached for Acme Plumbing "
@@ -104,7 +104,7 @@ class AnthropicClient:
 
     System prompts are flagged with `cache_control: ephemeral` so the
     appetite-scorer's static instructions are prompt-cached across runs
-    — saves ~50% on input tokens once warm.
+    - saves ~50% on input tokens once warm.
     """
 
     def __init__(self, model: str = DEFAULT_MODEL) -> None:
@@ -115,7 +115,7 @@ class AnthropicClient:
 
     def complete_json(self, system: str, user: str, *, max_tokens: int = 2048) -> dict:
         text = self.complete_text(
-            system + "\n\nReply with strict JSON only — no prose, no markdown fences.",
+            system + "\n\nReply with strict JSON only - no prose, no markdown fences.",
             user,
             max_tokens=max_tokens,
         )
@@ -183,7 +183,7 @@ class BedrockClient:
             accept="application/json",
             body=json.dumps(body).encode("utf-8"),
         )
-        # InvokeModel's `body` is a StreamingBody — read once, parse JSON.
+        # InvokeModel's `body` is a StreamingBody - read once, parse JSON.
         payload = json.loads(response["body"].read())
         return "".join(
             block.get("text", "")
@@ -193,7 +193,7 @@ class BedrockClient:
 
     def complete_json(self, system: str, user: str, *, max_tokens: int = 2048) -> dict:
         text = self.complete_text(
-            system + "\n\nReply with strict JSON only — no prose, no markdown fences.",
+            system + "\n\nReply with strict JSON only - no prose, no markdown fences.",
             user,
             max_tokens=max_tokens,
         ).strip()
@@ -208,7 +208,7 @@ def _aws_creds_present() -> bool:
     """Match boto3's resolution order, cheaply.
 
     Returns True if either AWS_ACCESS_KEY_ID is in the env OR a credentials
-    file exists. We don't actually call STS — the caller will hit a clean
+    file exists. We don't actually call STS - the caller will hit a clean
     error from boto3 if the creds are bad, and we don't want to fail
     closed at import time.
     """

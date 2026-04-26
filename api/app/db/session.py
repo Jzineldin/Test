@@ -31,7 +31,7 @@ def init_db() -> None:
 
     Tests and local dev hit this; it just calls create_all (fast, no
     process forking, no alembic dependency at test time). For prod
-    deploys, see `run_migrations()` — it's the one with version safety.
+    deploys, see `run_migrations()` - it's the one with version safety.
     """
     Base.metadata.create_all(bind=engine)
 

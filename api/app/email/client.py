@@ -1,11 +1,11 @@
 """Outbound email abstraction.
 
 Two implementations:
-  * StubEmailClient — in-memory, never touches the network. Default.
-  * SesEmailClient  — AWS SES via boto3. Used when SES_FROM_ADDRESS and
+  * StubEmailClient - in-memory, never touches the network. Default.
+  * SesEmailClient  - AWS SES via boto3. Used when SES_FROM_ADDRESS and
                        AWS creds are present in the environment.
 
-The endpoint never branches on env — it asks `get_client()` for whichever
+The endpoint never branches on env - it asks `get_client()` for whichever
 is configured.
 """
 from __future__ import annotations
@@ -47,7 +47,7 @@ class StubEmailClient:
     """Records sent messages in memory; assigns a fake provider id.
 
     Used by tests and by local dev when AWS isn't configured. The dashboard
-    'Send' button stays functional — the message just doesn't leave the host.
+    'Send' button stays functional - the message just doesn't leave the host.
     """
 
     def __init__(self) -> None:

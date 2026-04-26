@@ -1,6 +1,6 @@
 """Structured JSON logging.
 
-CloudWatch indexes JSON log events automatically — every key becomes a
+CloudWatch indexes JSON log events automatically - every key becomes a
 filterable field. Local dev keeps the same shape so log queries work
 the same offline.
 

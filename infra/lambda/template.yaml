@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Submission Triage Agent — FastAPI on Lambda + RDS Postgres
+Description: Submission Triage Agent - FastAPI on Lambda + RDS Postgres
 
 # Deploy with:
 #   sam build && sam deploy --guided   # first time, creates samconfig.toml
@@ -77,7 +77,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              # Scope to Claude on Bedrock only — least privilege.
+              # Scope to Claude on Bedrock only - least privilege.
               Resource:
                 - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-*
                 - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-*

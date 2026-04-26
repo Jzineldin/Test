@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Pricing — AppetiteMatch",
+  title: "Pricing - AppetiteMatch",
   description:
     "Transparent monthly pricing for wholesale brokers. Free trial, no credit card to start.",
 };
@@ -39,7 +39,7 @@ export default function PricingPage() {
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-400">
           Pick a plan based on how many submissions you triage. Switch tiers
-          anytime — your card is charged month-to-month.
+          anytime - your card is charged month-to-month.
         </p>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
@@ -190,7 +190,7 @@ const FAQ = [
   },
   {
     q: "Can I bring my own carrier list?",
-    a: "Yes — that's the whole point. Each org gets a private carrier directory at /app/carriers. Add NAICS prefixes, allowed/excluded states, lines, revenue band, contact email. The agent only matches against carriers you configured.",
+    a: "Yes - that's the whole point. Each org gets a private carrier directory at /app/carriers. Add NAICS prefixes, allowed/excluded states, lines, revenue band, contact email. The agent only matches against carriers you configured.",
   },
   {
     q: "Is the data encrypted?",
@@ -206,6 +206,6 @@ const FAQ = [
   },
   {
     q: "Who's behind this?",
-    a: "A small team obsessed with the wholesale broker workflow. Reach us at hello@appetitematch.com — we read every email.",
+    a: "A small team obsessed with the wholesale broker workflow. Reach us at hello@appetitematch.com - we read every email.",
   },
 ];

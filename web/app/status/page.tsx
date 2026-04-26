@@ -108,7 +108,7 @@ export default function StatusPage() {
           {version && (
             <dl className="mt-6 grid grid-cols-2 gap-y-3 text-xs">
               <Row label="Build">{version.git_sha ?? "dev"}</Row>
-              <Row label="Branch">{version.branch ?? "—"}</Row>
+              <Row label="Branch">{version.branch ?? "-"}</Row>
               <Row label="LLM">
                 <Badge mode={version.llm ?? "?"} />
               </Row>
@@ -124,7 +124,7 @@ export default function StatusPage() {
               <Row label="Started">
                 {version.started_at
                   ? new Date(version.started_at).toLocaleString()
-                  : "—"}
+                  : "-"}
               </Row>
             </dl>
           )}

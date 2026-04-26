@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — AppetiteMatch",
+  title: "Terms of Service - AppetiteMatch",
 };
 
 export default function TermsPage() {
@@ -29,7 +29,7 @@ export default function TermsPage() {
         <p>
           AppetiteMatch ingests submissions you provide, matches them against
           carrier appetite guidelines, drafts carrier-ready emails, and
-          optionally sends those emails on your behalf. The service is a tool —
+          optionally sends those emails on your behalf. The service is a tool -
           all underwriting and binding decisions remain with you and the
           carriers you submit to. Carrier appetite scores and draft language
           are AI-generated suggestions, not advice.

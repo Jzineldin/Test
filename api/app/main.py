@@ -1,4 +1,4 @@
-"""FastAPI app — HTTP surface for the triage agent.
+"""FastAPI app - HTTP surface for the triage agent.
 
 Auth: every triage/history endpoint requires `Authorization: Bearer <key>`.
 The demo seed creates one Org with a well-known key (see /me to fetch it).
@@ -74,7 +74,7 @@ logger = logging.getLogger("submission_triage")
 
 def _init_sentry() -> None:
     """Activate Sentry only when SENTRY_DSN is set. Safe to import in dev
-    or test environments — no DSN means no init, no network traffic."""
+    or test environments - no DSN means no init, no network traffic."""
     dsn = os.environ.get("SENTRY_DSN", "").strip()
     if not dsn:
         return
@@ -87,7 +87,7 @@ def _init_sentry() -> None:
             traces_sample_rate=float(
                 os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
             ),
-            send_default_pii=False,  # we send underwriting data — never log it
+            send_default_pii=False,  # we send underwriting data - never log it
         )
     except Exception:
         # Sentry failing to init must never block app boot.
@@ -209,7 +209,7 @@ def auth_signup(body: SignupRequest) -> None:
     email_client = get_email_client()
     email_client.send(
         to=user_email,
-        subject="Welcome to AppetiteMatch — confirm your email",
+        subject="Welcome to AppetiteMatch - confirm your email",
         body=(
             f"Hi {user_name or user_email.split('@')[0]},\n\n"
             f"Click below to finish setting up your account. Link expires in 15 minutes.\n\n"
@@ -228,7 +228,7 @@ class LoginRequest(BaseModel):
 def auth_login(body: LoginRequest) -> None:
     """Mail a magic-link to `email` if it belongs to a user.
 
-    Always returns 204 — never leak which emails are registered. The
+    Always returns 204 - never leak which emails are registered. The
     actual email send goes through the configured EmailClient; with no
     SES creds set, the link lands in the in-memory stub outbox so devs
     can grep for it.
@@ -326,7 +326,7 @@ def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
 
 
 class OrgSettings(BaseModel):
-    """All fields optional — omitted ones are left untouched."""
+    """All fields optional - omitted ones are left untouched."""
     name: str | None = None
     notification_webhook_url: str | None = None
     forward_inbox_address: str | None = None
@@ -337,7 +337,7 @@ class OrgSettings(BaseModel):
 def update_settings(
     body: OrgSettings, org: CurrentOrg = Depends(current_org),
 ) -> dict[str, Any]:
-    """Org-level settings update — webhook URL, inbox alias, display name."""
+    """Org-level settings update - webhook URL, inbox alias, display name."""
     _require_admin(org)
     with session_scope() as session:
         from .db.models import Org as OrgRow
@@ -370,7 +370,7 @@ def update_settings(
 
 @app.get("/me/api-key")
 def get_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
-    """Return the org's bearer API key — required for the Slack/curl path.
+    """Return the org's bearer API key - required for the Slack/curl path.
     Cookie auth gates the call so the key never appears in URL params."""
     with session_scope() as session:
         from .db.models import Org as OrgRow
@@ -427,7 +427,7 @@ def invite_user(
 ) -> UserOut:
     """Add a teammate to the calling org and mail them a sign-in link.
 
-    Idempotent on email — re-inviting an existing user just sends a fresh
+    Idempotent on email - re-inviting an existing user just sends a fresh
     magic link instead of erroring or creating a duplicate row."""
     _require_admin(org)
     if body.role not in {"admin", "csr"}:
@@ -488,7 +488,7 @@ def remove_user(
     user_id: int, org: CurrentOrg = Depends(current_org),
 ) -> None:
     """Remove a user from the org. Admin-only. Refuses to remove the last
-    admin — there must always be someone who can manage the account."""
+    admin - there must always be someone who can manage the account."""
     _require_admin(org)
     with session_scope() as session:
         from .db.models import User as UserRow
@@ -518,7 +518,7 @@ def remove_user(
 @app.post("/me/api-key/rotate")
 def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
     """Mint a new bearer key, invalidating the old one immediately.
-    Returns the new key in the body — never logged, never echoed back."""
+    Returns the new key in the body - never logged, never echoed back."""
     _require_admin(org)
     from .db import generate_api_key
     with session_scope() as session:
@@ -535,7 +535,7 @@ def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
 def _org_carriers(org_id: int) -> list[Carrier]:
     """Read carriers for an org, seeding the bundled samples on first call.
 
-    A brand-new org has no carriers yet — without seeding, their first
+    A brand-new org has no carriers yet - without seeding, their first
     triage would return 'no carriers passed prefilter' and the demo
     falls flat. Seeding once at first read is idempotent and only
     runs against orgs that haven't customized anything."""
@@ -590,7 +590,7 @@ def bulk_upsert_carriers(
 ) -> BulkCarriersResponse:
     """Batch upsert N carriers in one call. Used by the dashboard's CSV
     import flow so a broker pasting 25 markets doesn't fire 25 round
-    trips. Per-row errors are collected and returned, not raised — partial
+    trips. Per-row errors are collected and returned, not raised - partial
     success is the common case (typo in one row shouldn't block the rest)."""
     _require_admin(org)
     created = 0
@@ -721,7 +721,7 @@ def _run_and_persist(
                 None,
             )
             client.send(Notification(
-                title=f"New submission triaged — {submission.insured.legal_name}",
+                title=f"New submission triaged - {submission.insured.legal_name}",
                 body=(
                     f"State: {submission.insured.primary_state} · "
                     f"NAICS: {submission.insured.naics or '?'} · "
@@ -774,13 +774,13 @@ def triage_bulk(
     submissions: list[Submission],
     org: CurrentOrg = Depends(current_org),
 ) -> BulkTriageResponse:
-    """Run triage on N submissions in one request (admin-only — bulk
+    """Run triage on N submissions in one request (admin-only - bulk
     bypasses our normal rate-limiter assumptions, so we keep it
     behind admin role for cookie-authed users)."""
     _require_admin(org)
     """Run triage on N submissions in one request.
 
-    Sequential — Claude has rate limits and we don't want one slow LLM
+    Sequential - Claude has rate limits and we don't want one slow LLM
     call to block the whole batch's failure path. Each submission gets
     its own try/except so a bad row doesn't kill the whole batch."""
     if len(submissions) > _BULK_MAX:
@@ -1015,7 +1015,7 @@ def edit_draft(
 ) -> DraftStatus:
     """Broker tweaks the LLM-drafted email before sending.
 
-    No-op once the draft is sent — drafts are immutable post-send so the
+    No-op once the draft is sent - drafts are immutable post-send so the
     audit trail matches what actually went on the wire.
     """
     with session_scope() as session:
@@ -1077,7 +1077,7 @@ async def inbound_reply(request: Request) -> DraftStatus | None:
     """Match an inbound reply to the originating draft and record it.
 
     Public endpoint (no auth) because email providers can't carry an API
-    key — instead, payloads must be HMAC-signed with the org's
+    key - instead, payloads must be HMAC-signed with the org's
     webhook_secret. Replies that don't match a draft are silently
     dropped (returns null).
     """
@@ -1236,7 +1236,7 @@ def reports_digest(
     since: datetime | None = None,
     org: CurrentOrg = Depends(current_org),
 ) -> list[DigestItem]:
-    """What changed since `since` — for brokers who don't keep the
+    """What changed since `since` - for brokers who don't keep the
     dashboard open. Returns new replies + outcome promotions.
 
     Default `since`: 24 hours ago.
@@ -1297,7 +1297,7 @@ def reports_digest(
 async def inbound_email(request: Request) -> TriageResult | dict:
     """A forwarded retail-agent email lands here, ACORD attached.
 
-    Public endpoint (no API key) — caller must HMAC-sign the body with
+    Public endpoint (no API key) - caller must HMAC-sign the body with
     the destination org's webhook_secret. We resolve the org via the
     `to` field, so the body is parsed once before the signature check.
     """
@@ -1342,7 +1342,7 @@ async def inbound_email(request: Request) -> TriageResult | dict:
 
 @app.get("/history/export.csv")
 def history_export_csv(org: CurrentOrg = Depends(current_org)):
-    """Stream the period's history as CSV — accounting / leadership reports."""
+    """Stream the period's history as CSV - accounting / leadership reports."""
     import csv
     import io
 
@@ -1443,7 +1443,7 @@ def billing_portal_link(
     """Stripe Customer Portal session for self-serve subscription management.
 
     The customer can update their card, cancel, view invoices, or download
-    receipts — all on Stripe's hosted UI. Requires the org to already have
+    receipts - all on Stripe's hosted UI. Requires the org to already have
     a stripe_customer_id (set on first checkout)."""
     with session_scope() as session:
         from .db.models import Org as OrgRow
@@ -1451,7 +1451,7 @@ def billing_portal_link(
         if not row.stripe_customer_id or row.stripe_customer_id.startswith("cus_stub_"):
             raise HTTPException(
                 400,
-                detail="No Stripe customer on file — start a subscription first.",
+                detail="No Stripe customer on file - start a subscription first.",
             )
         customer_id = row.stripe_customer_id
 

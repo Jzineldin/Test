@@ -187,7 +187,7 @@ def test_inbound_fires_notification_when_org_has_webhook(env, client, monkeypatc
 
 
 def test_inbound_no_webhook_no_notification(env, client, monkeypatch):
-    """Default org has no webhook URL — get_client_for_url shouldn't be called."""
+    """Default org has no webhook URL - get_client_for_url shouldn't be called."""
     calls: list = []
     monkeypatch.setattr(env, "get_client_for_url", lambda url: calls.append(url) or None)
 

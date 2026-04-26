@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — AppetiteMatch",
+  title: "Privacy Policy - AppetiteMatch",
 };
 
 export default function PrivacyPage() {
@@ -22,11 +22,11 @@ export default function PrivacyPage() {
         </p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
           <li>
-            <strong>Account data</strong> you provide on signup — your name,
+            <strong>Account data</strong> you provide on signup - your name,
             work email, and brokerage name.
           </li>
           <li>
-            <strong>Submission content</strong> you upload — the ACORD PDFs and
+            <strong>Submission content</strong> you upload - the ACORD PDFs and
             normalized JSON submissions you choose to triage. We store these so
             the dashboard can show you run history.
           </li>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             org.
           </li>
           <li>
-            <strong>Usage metadata</strong> — submission counts, draft counts,
+            <strong>Usage metadata</strong> - submission counts, draft counts,
             send timestamps, quote-back timestamps.
           </li>
         </ul>
@@ -63,22 +63,22 @@ export default function PrivacyPage() {
         <p>We rely on the following infrastructure providers:</p>
         <ul className="mt-3 list-disc space-y-2 pl-6">
           <li>
-            <strong>AWS</strong> (Render-managed compute, Postgres, S3, SES) —
+            <strong>AWS</strong> (Render-managed compute, Postgres, S3, SES) -
             hosting + outbound email
           </li>
           <li>
-            <strong>Anthropic via AWS Bedrock</strong> — appetite scoring +
+            <strong>Anthropic via AWS Bedrock</strong> - appetite scoring +
             email drafting
           </li>
           <li>
-            <strong>Google Cloud (Document AI)</strong> — ACORD PDF field
+            <strong>Google Cloud (Document AI)</strong> - ACORD PDF field
             extraction
           </li>
           <li>
-            <strong>Stripe</strong> — subscription billing
+            <strong>Stripe</strong> - subscription billing
           </li>
           <li>
-            <strong>Cloudflare</strong> — DNS + edge proxy
+            <strong>Cloudflare</strong> - DNS + edge proxy
           </li>
         </ul>
       </Section>
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
         <p>
           All traffic is HTTPS. Authentication uses HTTP-only cookies with
           SameSite=None+Secure. Service-account credentials are stored as
-          encrypted environment variables on Render. We don't yet have SOC 2 —
+          encrypted environment variables on Render. We don't yet have SOC 2 -
           that's planned for the second half of 2026. If you need a DPA before
           purchase, email us.
         </p>

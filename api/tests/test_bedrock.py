@@ -1,4 +1,4 @@
-"""Bedrock LLM client tests — never call AWS.
+"""Bedrock LLM client tests - never call AWS.
 
 A FakeBedrockBoto returns a hand-crafted InvokeModel response shape,
 so we exercise the real BedrockClient against a stand-in boto3 client.
@@ -107,7 +107,7 @@ def test_llm_provider_anthropic_overrides_aws(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "anthropic")
     from app.llm.client import AnthropicClient
     # AnthropicClient construction calls Anthropic() which does NOT make
-    # a network call — only validates the key format on first request.
+    # a network call - only validates the key format on first request.
     client = get_client()
     assert isinstance(client, AnthropicClient)
 

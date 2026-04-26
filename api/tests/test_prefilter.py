@@ -2,7 +2,7 @@
 
 These tests pin the rules the agent depends on. If a carrier slips through
 the prefilter that shouldn't, every downstream LLM call wastes tokens and
-shows the broker an obviously-bad match — so this suite is load-bearing.
+shows the broker an obviously-bad match - so this suite is load-bearing.
 """
 from __future__ import annotations
 
@@ -37,13 +37,13 @@ def test_revenue_above_max_drops_small_account_carrier(carriers, acme_submission
 
 
 def test_revenue_below_min_drops_large_account_carrier(carriers, acme_submission):
-    """Great Basin's revenue_min is $10M — should stay excluded for $4.2M Acme."""
+    """Great Basin's revenue_min is $10M - should stay excluded for $4.2M Acme."""
     kept = prefilter(carriers, acme_submission)
     assert all(c.carrier_id != "great_basin" for c in kept)
 
 
 def test_naics_mismatch_drops_carrier(carriers, acme_submission):
-    """Switch NAICS from contractor (238) to retail (445) — Atlas/Redwood drop."""
+    """Switch NAICS from contractor (238) to retail (445) - Atlas/Redwood drop."""
     acme_submission.insured.naics = "445110"
     kept_ids = {c.carrier_id for c in prefilter(carriers, acme_submission)}
     assert "atlas_specialty" not in kept_ids

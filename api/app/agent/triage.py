@@ -22,25 +22,46 @@ from ..models import (
 from .carriers import prefilter
 
 APPETITE_SYSTEM = """You are an underwriting analyst for a wholesale commercial \
-insurance broker. You score each carrier's appetite for a given risk on a 0–1 \
-scale. Be conservative — only score above 0.7 when NAICS, state, line, and \
+insurance broker. You score each carrier's appetite for a given risk on a 0-1 \
+scale. Be conservative - only score above 0.7 when NAICS, state, line, and \
 revenue all clearly fit the carrier's published appetite. Always surface loss \
-history concerns as risk_flags."""
+history concerns as risk_flags. Use plain ASCII punctuation only - never \
+em dashes (U+2014) or en dashes (U+2013); use hyphens, commas, periods, or \
+parentheses instead."""
 
 
 DRAFT_SYSTEM = """You are a wholesale broker writing the cover email that goes \
 to a carrier underwriter. Tone is concise, factual, respectful of the \
 underwriter's time. Lead with the most relevant facts for THIS carrier's \
-appetite. Never invent figures — only use values from the provided submission \
+appetite. Never invent figures - only use values from the provided submission \
 JSON. Never claim a document is attached unless ATTACHMENTS is non-empty in \
 the task. When ATTACHMENTS is empty, the email body must contain ALL the \
 underwriting data the carrier needs (limits, loss runs as text, fleet size, \
-etc.) so the carrier can quote without follow-up. \
+etc.) so the carrier can quote without follow-up.\
+\
+\
+WRITING RULES YOU MUST FOLLOW:\
+- Never use em dashes (the long horizontal line, U+2014). Use a hyphen, \
+  comma, period, parentheses, or a semicolon instead.\
+- Never use en dashes (U+2013) either. Use a hyphen for ranges and lists.\
+- Real wholesale brokers do not write with em dashes; the carrier underwriter \
+  will spot AI output instantly if you use them.\
+- Plain ASCII punctuation only. No fancy quotes, no bullets other than \
+  hyphens, no special dashes anywhere in the body or subject.\
 \
 Sign the email with the literal text from BROKER_PROFILE.email_signature \
 when present (preserve its line breaks). When email_signature is missing, \
-sign with the broker's name and brokerage from BROKER_PROFILE — never use \
+sign with the broker's name and brokerage from BROKER_PROFILE - never use \
 placeholder brackets like [Broker Name] or [Phone]."""
+
+
+# Defensive client-side strip in case the model still emits one despite
+# the system instruction. Cheaper than re-prompting on detection.
+_DASH_TRANSLATION = str.maketrans({"—": "-", "–": "-"})
+
+
+def _strip_dashes(text: str) -> str:
+    return text.translate(_DASH_TRANSLATION) if text else text
 
 
 def _appetite_user_prompt(submission: Submission, carriers: list[Carrier]) -> str:
@@ -104,13 +125,13 @@ def _score_appetite(
             carrier_id=carrier.carrier_id,
             carrier_name=carrier.name,
             score=float(raw.get("score", 0.0)),
-            rationale=raw.get("rationale", ""),
-            risk_flags=list(raw.get("risk_flags", [])),
+            rationale=_strip_dashes(raw.get("rationale", "")),
+            risk_flags=[_strip_dashes(f) for f in raw.get("risk_flags", [])],
             submission_email=carrier.submission_email,
             typical_quote_back_days=carrier.typical_quote_back_days,
         ))
     matches.sort(key=lambda m: m.score, reverse=True)
-    return matches, response.get("summary", "")
+    return matches, _strip_dashes(response.get("summary", ""))
 
 
 def _draft_emails(
@@ -142,8 +163,8 @@ def _draft_emails(
         drafts.append(DraftedEmail(
             carrier_id=carrier.carrier_id,
             to=carrier.submission_email,
-            subject=response.get("subject", "New Submission"),
-            body=response.get("body", ""),
+            subject=_strip_dashes(response.get("subject", "New Submission")),
+            body=_strip_dashes(response.get("body", "")),
             attachments=attachment_names,
         ))
     return drafts
@@ -161,7 +182,7 @@ def triage_submission(
     """Run the full triage flow for a single submission.
 
     `broker_profile` is the broker's org/contact info (name, brokerage,
-    phone, email) — threaded into the email-draft prompt so signatures
+    phone, email) - threaded into the email-draft prompt so signatures
     aren't `[Broker Name]` placeholders.
     `attachments` is the list of filenames the broker is sending alongside
     the cover email. Empty/None tells the drafter to embed all data inline

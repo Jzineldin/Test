@@ -109,7 +109,7 @@ def main() -> int:
     carriers = parse_csv(args.csv)
 
     if not carriers:
-        print("no carriers parsed — check the carrier_id column")
+        print("no carriers parsed - check the carrier_id column")
         return 1
 
     for cid, payload in carriers.items():

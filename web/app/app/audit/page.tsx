@@ -86,7 +86,7 @@ export default function AuditPage() {
             Audit log
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Every state change is recorded — useful for E&O incident reviews
+            Every state change is recorded - useful for E&O incident reviews
             and SOC 2 evidence collection.
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function AuditPage() {
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-400">{e.actor}</td>
                 <td className="px-4 py-3 text-xs text-slate-400">
-                  {e.target_id ?? "—"}
+                  {e.target_id ?? "-"}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {Object.keys(e.details).length > 0 ? (
@@ -139,7 +139,7 @@ export default function AuditPage() {
                       {JSON.stringify(e.details)}
                     </code>
                   ) : (
-                    <span className="text-slate-600">—</span>
+                    <span className="text-slate-600">-</span>
                   )}
                 </td>
               </tr>

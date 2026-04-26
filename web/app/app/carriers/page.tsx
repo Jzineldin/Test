@@ -148,7 +148,7 @@ export default function CarriersPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-400">
             Add the carriers you actually quote with. Each rule defines an
-            appetite slice — NAICS prefix, states, lines, revenue band.
+            appetite slice - NAICS prefix, states, lines, revenue band.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -195,7 +195,7 @@ export default function CarriersPage() {
         <p className="mt-2">
           Use semicolons (
           <code className="text-slate-200">;</code>) to separate multiple
-          values inside a list field — e.g.{" "}
+          values inside a list field - e.g.{" "}
           <code className="text-slate-200">238;236</code> for NAICS prefixes,{" "}
           <code className="text-slate-200">general_liability;commercial_auto</code>{" "}
           for lines. Existing carriers (matched on carrier_id) are
@@ -257,7 +257,7 @@ export default function CarriersPage() {
                 >
                   NAICS{" "}
                   <span className="text-slate-200">
-                    {r.naics_prefixes.join(", ") || "—"}
+                    {r.naics_prefixes.join(", ") || "-"}
                   </span>{" "}
                   · Lines{" "}
                   <span className="text-slate-200">
@@ -281,7 +281,7 @@ export default function CarriersPage() {
                       {" "}
                       · Rev{" "}
                       <span className="text-slate-200">
-                        {fmtRev(r.revenue_min)}–{fmtRev(r.revenue_max)}
+                        {fmtRev(r.revenue_min)}-{fmtRev(r.revenue_max)}
                       </span>
                     </>
                   )}
@@ -530,7 +530,7 @@ function CarrierEditor({
                 onChange={(e) =>
                   setRule(i, { notes: e.target.value || null })
                 }
-                placeholder="Artisan contractors only — no new construction GCs."
+                placeholder="Artisan contractors only - no new construction GCs."
                 className={inputClass}
               />
             </Field>
@@ -602,7 +602,7 @@ function upper(s: string): string {
 
 /** Minimal CSV → Carrier[] parser. Handles double-quoted fields with
  *  embedded commas; semicolons split list-typed fields (NAICS, states,
- *  lines). Strict on header presence — throws if the required carrier_id
+ *  lines). Strict on header presence - throws if the required carrier_id
  *  column is missing. */
 function parseCsvCarriers(text: string): Carrier[] {
   const lines = text

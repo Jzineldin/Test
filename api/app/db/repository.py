@@ -1,6 +1,6 @@
 """High-level persistence operations for triage runs.
 
-Endpoints call these — they don't touch the ORM directly. That keeps the
+Endpoints call these - they don't touch the ORM directly. That keeps the
 HTTP surface and the storage layer decoupled and lets us swap engines
 (SQLite ↔ Postgres) without endpoint changes.
 """
@@ -74,9 +74,9 @@ def list_triage_runs(
     """Most recent first, scoped to org.
 
     Optional filters:
-      * insured_search — substring match on insured_name (case-insensitive)
-      * state          — exact match on primary_state ('TX', 'CA', ...)
-      * since          — only runs created after this timestamp
+      * insured_search - substring match on insured_name (case-insensitive)
+      * state          - exact match on primary_state ('TX', 'CA', ...)
+      * since          - only runs created after this timestamp
     """
     # id DESC breaks ties when two runs land in the same DB clock tick.
     stmt = (
@@ -105,7 +105,7 @@ def record_audit_event(
     details: dict | None = None,
     actor: str = "api-key",
 ) -> None:
-    """Append-only — never updates an existing row."""
+    """Append-only - never updates an existing row."""
     from .models import AuditEvent
 
     session.add(AuditEvent(
@@ -146,7 +146,7 @@ def get_draft(
 def mark_draft_sent(
     draft: DraftedEmailRow, *, provider_message_id: str,
 ) -> DraftedEmailRow:
-    """Idempotent in spirit — re-sending overwrites with the latest id."""
+    """Idempotent in spirit - re-sending overwrites with the latest id."""
     draft.sent_at = datetime.now(timezone.utc)
     draft.provider_message_id = provider_message_id
     return draft

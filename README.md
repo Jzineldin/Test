@@ -1,4 +1,4 @@
-# AppetiteMatch — Submission Triage for Wholesale Insurance Brokers
+# AppetiteMatch - Submission Triage for Wholesale Insurance Brokers
 
 An agentic backend + dashboard for **wholesale commercial insurance brokers / MGAs**
 that ingests submissions from retail agents (ACORD PDFs or normalized JSON),
@@ -14,34 +14,34 @@ Live demo: https://appetitematch.com
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJzineldin%2FTest&root-directory=web&env=NEXT_PUBLIC_API_URL&envDescription=Render%20API%20URL%20from%20step%201)
 
 **Click Render first** (deploys the FastAPI backend + Postgres). When that's
-live, copy the `.onrender.com` URL and **click Vercel** — it'll prompt you for
+live, copy the `.onrender.com` URL and **click Vercel** - it'll prompt you for
 `NEXT_PUBLIC_API_URL`, paste the Render URL there. Full step-by-step in
 [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Why this exists
 
 Wholesale brokers (E&S / MGA market) drown in inbound submissions. A 20-person
-shop processes 200–600/month. Each submission today costs 30–90 minutes of CSR
+shop processes 200-600/month. Each submission today costs 30-90 minutes of CSR
 time to triage, classify, match to carrier appetite, and package for outbound.
 This collapses that work to seconds and produces a reviewable artifact.
 
 ## Run locally (no cloud creds needed)
 
 ```bash
-# Terminal 1 — API
+# Terminal 1 - API
 cd api
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 .venv/bin/uvicorn app.main:app --reload   # http://localhost:8000
 
-# Terminal 2 — dashboard
+# Terminal 2 - dashboard
 cd web && npm install && npm run dev      # http://localhost:3000
 
 # Tests
 cd api && .venv/bin/pytest                 # 118 passing
 ```
 
-Local dev uses cookie auth via the magic-link flow at `/login` — sign in
+Local dev uses cookie auth via the magic-link flow at `/login` - sign in
 with any email and the link lands in the in-memory stub email outbox
 (grep the API process stdout for `triage_session`). For curl-style
 testing, the bundled demo org has a well-known bearer key
@@ -79,7 +79,7 @@ Inbound (PDF upload / JSON / email)
         └───────────┬───────────────┘
                     ▼
         ┌───────────────────────────┐
-        │  Claude appetite scorer   │ (0–1, rationale, risk_flags)
+        │  Claude appetite scorer   │ (0-1, rationale, risk_flags)
         └───────────┬───────────────┘
                     ▼
         ┌───────────────────────────┐
@@ -209,7 +209,7 @@ web/
   lib/                   shared TS types + embedded sample
   package.json
 data/
-  carriers/              bundled sample carriers — auto-seeded into each
+  carriers/              bundled sample carriers - auto-seeded into each
                          new org on first signup, then editable per-org
                          via /app/carriers and /carriers REST endpoints
   submissions/           sample submissions (Acme Plumbing TX)
@@ -254,18 +254,18 @@ chatter.
 
 ## What's deliberately not built yet
 
-- **Custom DocAI processor** — generic Form Parser is wired; for ACORD-specific
+- **Custom DocAI processor** - generic Form Parser is wired; for ACORD-specific
   accuracy, train a Document AI Custom Extractor on labeled forms.
-- **Workload Identity Federation for GCP** — current setup uses a static
+- **Workload Identity Federation for GCP** - current setup uses a static
   service-account JSON. WIF gets us short-lived tokens with no key
   material at rest, required for SOC 2 Type II.
-- **AMS write-back** — Applied Epic / AMS360 / HawkSoft. The real
+- **AMS write-back** - Applied Epic / AMS360 / HawkSoft. The real
   carrier-side lock-in lives here.
-- **Per-quote outcome pricing** — usage today is per-submission. Switch
+- **Per-quote outcome pricing** - usage today is per-submission. Switch
   to a dedicated `usage_records` table when we move to per-quote.
-- **SES Inbound forwarding** — brokers want to forward retail emails
+- **SES Inbound forwarding** - brokers want to forward retail emails
   to `triage+orgslug@appetitematch.com` and have a TriageRun pop up
   automatically. Settings panel already collects the alias; the
   Lambda glue isn't wired yet.
-- **Soft-delete + 30-day recovery for orgs** — current account
+- **Soft-delete + 30-day recovery for orgs** - current account
   deletion is hard-delete on next call (none implemented).

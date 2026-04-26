@@ -10,7 +10,7 @@ export default function NotFound() {
         Page not found.
       </h1>
       <p className="mt-2 max-w-md text-sm text-slate-400">
-        Whatever you were looking for — appetite guide, broker, ACORD — it's
+        Whatever you were looking for - appetite guide, broker, ACORD - it's
         not at this URL. Double-check the link, or jump to one of these:
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">

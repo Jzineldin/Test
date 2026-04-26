@@ -64,7 +64,7 @@ function Hero() {
           Your retail agents drop ACORDs in your inbox. Our agent reads each one,
           matches it to the carriers that actually want the risk, drafts the cover
           email, attaches the original PDF, and waits for your reviewer. CSRs go
-          from 200 submissions a month to 1,000 — without hiring.
+          from 200 submissions a month to 1,000 - without hiring.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
@@ -103,7 +103,7 @@ function HeroPreview() {
         <span className="size-2 rounded-full bg-amber-500/70" />
         <span className="size-2 rounded-full bg-emerald-500/70" />
         <span className="ml-3 text-slate-500">
-          appetitematch.com/app — Sunrise HVAC, Tampa FL
+          appetitematch.com/app - Sunrise HVAC, Tampa FL
         </span>
       </div>
       <p className="text-xs uppercase tracking-widest text-emerald-400">
@@ -137,10 +137,10 @@ function HeroPreview() {
       </ul>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400">
-          ✓ sent — Atlas
+          ✓ sent - Atlas
         </span>
         <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300">
-          ↩ replied — Keystone $42k
+          ↩ replied - Keystone $42k
         </span>
         <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-semibold text-emerald-300">
           ★ BOUND · $42,000
@@ -165,9 +165,9 @@ const HERO_MATCHES = [
   },
   {
     name: "Redwood Underwriters",
-    note: "Property only — skipped",
+    note: "Property only - skipped",
     score: 0.32,
-    qb: "—",
+    qb: "-",
   },
 ];
 
@@ -188,7 +188,7 @@ function Problem() {
               for each one, attach the right forms, send.
             </p>
             <p className="mt-4 text-slate-400">
-              A 20-person brokerage processes 200–600 of these a month. That's
+              A 20-person brokerage processes 200-600 of these a month. That's
               60+ hours of CSR time that could be spent on the calls that close.
             </p>
           </div>
@@ -211,7 +211,7 @@ function Problem() {
 
 const PROBLEMS = [
   {
-    title: "30–90 minutes per submission",
+    title: "30-90 minutes per submission",
     body: "Read the ACORD, normalize the data, look up carrier appetite, write the cover email, attach the right forms.",
   },
   {
@@ -261,7 +261,7 @@ function HowItWorks() {
 const STEPS = [
   {
     title: "Ingest the ACORD",
-    body: "Drop a PDF or forward an email. We extract every field — insured, NAICS, locations, lines, loss runs — and normalize them into one record.",
+    body: "Drop a PDF or forward an email. We extract every field - insured, NAICS, locations, lines, loss runs - and normalize them into one record.",
   },
   {
     title: "Match carrier appetite",
@@ -312,7 +312,7 @@ function Comparison() {
         <p className="mt-8 text-sm text-slate-500">
           The agentic LLM is the easy part. The structured carrier appetite
           DB, the org-scoped audit log, the SES outbound with PDF attached,
-          the per-org pipeline view — that's where AppetiteMatch lives.
+          the per-org pipeline view - that's where AppetiteMatch lives.
         </p>
       </div>
     </section>
@@ -324,7 +324,7 @@ const COMPARISON_ROWS = [
     label: "Reads ACORD PDFs",
     chatgpt: "Yes (slow, no validation)",
     ams: "No",
-    us: "Yes — Document AI form parser",
+    us: "Yes - Document AI form parser",
   },
   {
     label: "Carrier appetite DB",
@@ -364,8 +364,8 @@ const COMPARISON_ROWS = [
   },
   {
     label: "Time per submission",
-    chatgpt: "10–15 min",
-    ams: "30–90 min",
+    chatgpt: "10-15 min",
+    ams: "30-90 min",
     us: "20 seconds + review",
   },
 ];
@@ -415,7 +415,7 @@ const USE_CASES = [
     tag: "Artisan contractors",
     title: "Roofer in Texas, plumber in Florida, HVAC in Georgia",
     body:
-      "Mid-market construction trades with $1–25M revenue, mostly W-2 staff, GL + Auto + Umbrella. AppetiteMatch flags the carriers in southern in-appetite states with NAICS 23x prefixes and revenue bands that fit, drafts cover emails that reference each carrier's specific underwriting concerns (driver MVRs, subcontractor exposure, loss frequency on auto).",
+      "Mid-market construction trades with $1-25M revenue, mostly W-2 staff, GL + Auto + Umbrella. AppetiteMatch flags the carriers in southern in-appetite states with NAICS 23x prefixes and revenue bands that fit, drafts cover emails that reference each carrier's specific underwriting concerns (driver MVRs, subcontractor exposure, loss frequency on auto).",
     bullets: [
       "Auto-flags carriers that exclude the insured's state",
       "Routes umbrella separately when the GL carrier doesn't write umbrella",
@@ -426,7 +426,7 @@ const USE_CASES = [
     tag: "Habitational property",
     title: "Apartment buildings, condos, mixed-use",
     body:
-      "$5–50M TIV property accounts in southern states. Carriers want sprinklered, masonry construction, post-2000 build year, verified loss runs. AppetiteMatch reads the location schedule, identifies the carriers whose habitational appetite fits, and embeds the COPE summary inline in the cover.",
+      "$5-50M TIV property accounts in southern states. Carriers want sprinklered, masonry construction, post-2000 build year, verified loss runs. AppetiteMatch reads the location schedule, identifies the carriers whose habitational appetite fits, and embeds the COPE summary inline in the cover.",
     bullets: [
       "Reads location schedules + construction class out of the ACORD",
       "Skips carriers without habitational lines (no wasted submissions)",
@@ -448,9 +448,9 @@ const USE_CASES = [
     tag: "Specialty / E&S",
     title: "Anything your retail can't place",
     body:
-      "Manufacturing tail risks, environmental contractors, restaurants with liquor, cyber. Define each carrier's appetite once in the directory, AppetiteMatch never sends an out-of-appetite submission again — saves 40-90 minutes per declined risk that would have round-tripped to the underwriter.",
+      "Manufacturing tail risks, environmental contractors, restaurants with liquor, cyber. Define each carrier's appetite once in the directory, AppetiteMatch never sends an out-of-appetite submission again - saves 40-90 minutes per declined risk that would have round-tripped to the underwriter.",
     bullets: [
-      "Per-org carrier directory — your appetite library, not ours",
+      "Per-org carrier directory - your appetite library, not ours",
       "Deterministic prefilter rejects out-of-appetite before the LLM call",
       "Audit log captures every triage decision for E&O reviews",
     ],

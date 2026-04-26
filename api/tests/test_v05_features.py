@@ -70,11 +70,11 @@ def test_patch_draft_overrides_subject_and_body(client):
     draft_id = _seed(client)
     r = client.patch(
         f"/drafts/{draft_id}",
-        json={"subject": "EDITED — please review", "body": "New body."},
+        json={"subject": "EDITED - please review", "body": "New body."},
         headers=HEADERS,
     )
     assert r.status_code == 200, r.text
-    assert r.json()["subject"] == "EDITED — please review"
+    assert r.json()["subject"] == "EDITED - please review"
     assert r.json()["body"] == "New body."
 
 

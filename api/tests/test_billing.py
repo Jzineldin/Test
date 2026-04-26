@@ -1,4 +1,4 @@
-"""Billing tests — usage metering + Stripe checkout flow + webhook handling.
+"""Billing tests - usage metering + Stripe checkout flow + webhook handling.
 
 All tests use the StubBillingClient (default when STRIPE_SECRET_KEY is unset).
 """

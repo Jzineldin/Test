@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "Help & how-to",
   description:
-    "How to use AppetiteMatch end to end — from your first triage to wiring inbound forwarding.",
+    "How to use AppetiteMatch end to end - from your first triage to wiring inbound forwarding.",
 };
 
 export default function HelpPage() {
@@ -47,7 +47,7 @@ export default function HelpPage() {
             Visit <code className="text-slate-200">/signup</code>, enter
             your name, brokerage, and work email. Click the magic link in
             your inbox (from <code className="text-slate-200">submissions@appetitematch.com</code>)
-            — that drops you into <code className="text-slate-200">/app</code> already
+            - that drops you into <code className="text-slate-200">/app</code> already
             signed in.
           </p>
 
@@ -89,7 +89,7 @@ export default function HelpPage() {
           <p>
             If a state isn't in <code className="text-slate-200">states_in</code>
             (or is in <code className="text-slate-200">states_out</code>), the
-            carrier won't match — even if their NAICS prefix fits. Same for
+            carrier won't match - even if their NAICS prefix fits. Same for
             revenue band and line of business.
           </p>
         </Section>
@@ -99,7 +99,7 @@ export default function HelpPage() {
           <p>
             The cover email goes via Amazon SES. If the submission was
             uploaded as a PDF, the original ACORD is auto-attached on send
-            — no copy-paste. The recipient is whatever you set as{" "}
+            - no copy-paste. The recipient is whatever you set as{" "}
             <code className="text-slate-200">submission_email</code> on the
             carrier row.
           </p>
@@ -119,7 +119,7 @@ export default function HelpPage() {
             to <code className="text-slate-200">triage+yourorgslug@appetitematch.com</code>
             (set the alias in <strong>Settings → Forward-inbox alias</strong>).
             The PDF gets parsed and a triage run starts automatically. (This
-            requires the SES Inbound rule to be wired on our side — talk to
+            requires the SES Inbound rule to be wired on our side - talk to
             us if you need it activated for your alias.)
           </p>
         </Section>
@@ -136,7 +136,7 @@ export default function HelpPage() {
 
           <H3>Audit log.</H3>
           <p>
-            Every state change is recorded — who triaged what, who sent
+            Every state change is recorded - who triaged what, who sent
             which draft, who promoted an outcome. Visible at{" "}
             <code className="text-slate-200">/app/audit</code>. Useful for
             E&O incident reviews and SOC 2 evidence collection.
@@ -212,7 +212,7 @@ export default function HelpPage() {
           <p>
             Check the green/amber pill in the dashboard header. If SES
             shows <strong>stub</strong>, the API isn't configured to send
-            real email yet. Email us — usually a 5-min env-var fix.
+            real email yet. Email us - usually a 5-min env-var fix.
           </p>
         </Section>
 
@@ -224,7 +224,7 @@ export default function HelpPage() {
           >
             hello@appetitematch.com
           </a>{" "}
-          — we read every email.
+          - we read every email.
         </p>
       </section>
 

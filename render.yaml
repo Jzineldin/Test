@@ -1,4 +1,4 @@
-# Render Blueprint — one-click deploy of the FastAPI backend + Postgres.
+# Render Blueprint - one-click deploy of the FastAPI backend + Postgres.
 #
 # Usage:
 #   1. Sign in to https://render.com (free, GitHub OAuth)
@@ -7,14 +7,14 @@
 #      and runs the build/start commands automatically.
 #   4. After deploy, set the secret env vars in the Render dashboard
 #      (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, CORS_ORIGINS).
-#   5. Copy the *.onrender.com URL — that's your API base.
+#   5. Copy the *.onrender.com URL - that's your API base.
 #
 # Free-tier notes:
 #   * Web service sleeps after 15 min idle; first request after sleep
 #     takes ~30 s to wake the container. Fine for piloting.
 #   * Postgres free tier is good for ~90 days (Render's policy at
 #     time of writing). After that either pay $7/mo or migrate to
-#     Neon (export DATABASE_URL, that's it — the schema travels via
+#     Neon (export DATABASE_URL, that's it - the schema travels via
 #     `alembic upgrade head` on first boot of the new DB).
 
 services:
@@ -25,7 +25,7 @@ services:
     region: oregon          # closest free Bedrock region for us-west-2 users; pick virginia if you went us-east-1
     rootDir: api
     buildCommand: pip install -r requirements.txt
-    # alembic upgrade head is idempotent — runs every cold start, no-op
+    # alembic upgrade head is idempotent - runs every cold start, no-op
     # when already at head. Keeps deploys safe across schema changes.
     startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
@@ -36,7 +36,7 @@ services:
         fromDatabase:
           name: triage-db
           property: connectionString
-      # Secrets — set these in the Render dashboard, NOT here.
+      # Secrets - set these in the Render dashboard, NOT here.
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY

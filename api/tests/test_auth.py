@@ -1,4 +1,4 @@
-"""Auth dependency tests — exercise the FastAPI surface end-to-end with a
+"""Auth dependency tests - exercise the FastAPI surface end-to-end with a
 TestClient against a tmp SQLite so the demo org seed runs naturally."""
 from __future__ import annotations
 

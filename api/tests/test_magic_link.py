@@ -74,7 +74,7 @@ def _last_link_from_outbox() -> str:
     from app.db.models import MagicLinkToken, User
     from sqlalchemy import select
     with db_pkg.session_scope() as session:
-        # The plaintext token isn't stored — we can't retrieve it.
+        # The plaintext token isn't stored - we can't retrieve it.
         # This helper exists for tests that need to reconstruct flow;
         # see test_full_login_flow which captures the token differently.
         _ = body
@@ -82,7 +82,7 @@ def _last_link_from_outbox() -> str:
 
 
 def test_login_with_unknown_email_returns_204(client):
-    """Always 204 — never leaks which addresses are registered."""
+    """Always 204 - never leaks which addresses are registered."""
     r = client.post("/auth/login", json={"email": "nobody@example.com"})
     assert r.status_code == 204
 
@@ -185,7 +185,7 @@ def test_signup_creates_org_and_admin_user(client):
 
 
 def test_signup_with_duplicate_email_does_not_create_duplicate_org(client):
-    """Signing up twice with the same email is idempotent — just sends a
+    """Signing up twice with the same email is idempotent - just sends a
     fresh login link to the original org instead of creating a clone."""
     body = {"email": "x@y.com", "name": "X", "company_name": "Y Co"}
     assert client.post("/auth/signup", json=body).status_code == 204
@@ -309,7 +309,7 @@ def test_get_api_key_returns_bearer_token(client):
 
 def test_rotate_api_key_changes_value_and_invalidates_old(client):
     user_id = _seed_user(client)
-    # Rotation is admin-only — promote then sign in as admin.
+    # Rotation is admin-only - promote then sign in as admin.
     _login_as_admin(client, user_id)
 
     old = client.get("/me/api-key").json()["api_key"]

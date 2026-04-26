@@ -1,4 +1,4 @@
-# Local-dev stack — Postgres + API + (optionally) the Next.js dashboard.
+# Local-dev stack - Postgres + API + (optionally) the Next.js dashboard.
 # Mirrors the prod setup closely enough to debug deploy issues locally.
 #
 # Usage:
@@ -31,7 +31,7 @@ services:
       DATABASE_URL: postgresql://triage:triage@db:5432/triage
       CARRIERS_DIR: /app/data/carriers
       CORS_ORIGINS: http://localhost:3000
-      # No real provider keys set — the stubs handle local dev.
+      # No real provider keys set - the stubs handle local dev.
     ports:
       - "8000:8000"
     volumes:

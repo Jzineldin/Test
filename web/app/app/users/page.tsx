@@ -137,7 +137,7 @@ export default function UsersPage() {
             Team
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Invite CSRs and other admins. Magic-link sign-in — no shared
+            Invite CSRs and other admins. Magic-link sign-in - no shared
             passwords.
           </p>
         </div>

@@ -1,4 +1,4 @@
-"""Persistence tests — fresh in-memory SQLite per test, no file I/O.
+"""Persistence tests - fresh in-memory SQLite per test, no file I/O.
 
 Verifies that save_triage_run captures matches + drafts, list_triage_runs
 returns most-recent-first, and get_triage_run hydrates relationships.

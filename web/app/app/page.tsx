@@ -79,7 +79,7 @@ export default function Home() {
           return;
         }
       } catch {
-        /* network blip — leave authChecked false so we retry on rerender */
+        /* network blip - leave authChecked false so we retry on rerender */
         return;
       }
       setAuthChecked(true);
@@ -286,7 +286,7 @@ export default function Home() {
     return <DashboardSkeleton />;
   }
 
-  // API-key auth has no user context — treat as admin for the surfaces.
+  // API-key auth has no user context - treat as admin for the surfaces.
   // Cookie-authed users are gated by their actual role.
   const isAdmin = !me?.user_role || me.user_role === "admin";
 
@@ -298,7 +298,7 @@ export default function Home() {
             {me?.org_name ?? "AppetiteMatch"}
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Wholesale broker workflow — ACORD in, carrier-ready submissions out.
+            Wholesale broker workflow - ACORD in, carrier-ready submissions out.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -390,7 +390,7 @@ export default function Home() {
             {mode === "pdf" && (
               <>
                 {" "}PDF parsing requires GCP Document AI env vars on the API
-                — without them, the endpoint returns 503.
+                - without them, the endpoint returns 503.
               </>
             )}
           </p>
@@ -412,7 +412,7 @@ export default function Home() {
                   then <span className="text-slate-300">Reset to sample</span>
                 </li>
                 <li>
-                  2. Hit <span className="text-slate-300">Run triage</span> —
+                  2. Hit <span className="text-slate-300">Run triage</span> -
                   Acme Plumbing, TX gets scored against 4 carriers
                 </li>
                 <li>3. Review matches → click "Send" on the top draft</li>
@@ -763,13 +763,13 @@ function ReportStrip({ report }: { report: ReportPayload }) {
       label: "Avg time-to-quote",
       value: report.avg_hours_to_quote != null
         ? `${report.avg_hours_to_quote.toFixed(1)}h`
-        : "—",
+        : "-",
     },
     {
       label: "Bound premium",
       value: report.bound_premium_dollars > 0
         ? `$${report.bound_premium_dollars.toLocaleString()}`
-        : "—",
+        : "-",
     },
   ];
   return (
@@ -1162,7 +1162,7 @@ function WelcomeBanner() {
     <section className="mb-8 rounded-md border border-emerald-700 bg-emerald-500/5 p-5">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-emerald-300">
-          Welcome — let's get you running
+          Welcome - let's get you running
         </h2>
         <button
           onClick={() => setDismissed(true)}
@@ -1322,7 +1322,7 @@ function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
   return (
     <section className="mt-12 border-t border-slate-800 pt-8">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Per-carrier performance — this period
+        Per-carrier performance - this period
       </h2>
       <div className="overflow-x-auto rounded-md border border-slate-800">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -1351,20 +1351,20 @@ function CarrierStatsTable({ stats }: { stats: CarrierStats[] }) {
                 <td className="px-4 py-3">{s.drafts_replied}</td>
                 <td className="px-4 py-3 text-emerald-300">{s.drafts_bound}</td>
                 <td className="px-4 py-3">
-                  {s.drafts_sent ? `${(s.quote_back_rate * 100).toFixed(0)}%` : "—"}
+                  {s.drafts_sent ? `${(s.quote_back_rate * 100).toFixed(0)}%` : "-"}
                 </td>
                 <td className="px-4 py-3">
-                  {s.drafts_replied ? `${(s.bind_rate * 100).toFixed(0)}%` : "—"}
+                  {s.drafts_replied ? `${(s.bind_rate * 100).toFixed(0)}%` : "-"}
                 </td>
                 <td className="px-4 py-3">
                   {s.avg_hours_to_quote != null
                     ? `${s.avg_hours_to_quote.toFixed(1)}h`
-                    : "—"}
+                    : "-"}
                 </td>
                 <td className="px-4 py-3 text-emerald-300">
                   {s.bound_premium_dollars > 0
                     ? `$${s.bound_premium_dollars.toLocaleString()}`
-                    : "—"}
+                    : "-"}
                 </td>
               </tr>
             ))}

@@ -58,7 +58,7 @@ def demo(
             f"{match.score:.2f}",
             f"{match.typical_quote_back_days}d",
             match.rationale,
-            "\n".join(match.risk_flags) or "—",
+            "\n".join(match.risk_flags) or "-",
         )
     console.print(table)
 

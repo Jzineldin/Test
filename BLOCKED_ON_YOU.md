@@ -1,4 +1,4 @@
-# Blocked on you — morning checklist
+# Blocked on you - morning checklist
 
 These are the tasks I couldn't complete from my sandbox. Each is short.
 Order them however you want.
@@ -10,7 +10,7 @@ Order them however you want.
 There are 23 commits on `claude/ai-agent-venture-builder-taoWC` that
 aren't live yet. Render API isn't reachable from my sandbox.
 
-**Render** (auto-deploys on commit but flaky — force it):
+**Render** (auto-deploys on commit but flaky - force it):
 
 ```bash
 RENDER_KEY="rnd_ZyKZBxmgNrBJ15kIHA6aqUtwnKcl"
@@ -59,7 +59,7 @@ For each, after rotation:
 ## 3. AWS SES Inbound rule (15 min, one-time)
 
 Backend webhook (`/webhooks/email`) is wired and tested. AWS Console
-side isn't done yet — without it, the "broker forwards an inbound to
+side isn't done yet - without it, the "broker forwards an inbound to
 triage+slug@appetitematch.com" flow doesn't trigger.
 
 Steps in AWS Console:
@@ -80,7 +80,7 @@ Tell me when it's set up; I can sanity-check the Lambda code shape.
 
 Highest-impact remaining marketing item. Two options:
 
-**Option A — Arcade.software** (recommended, interactive replay)
+**Option A - Arcade.software** (recommended, interactive replay)
 1. Sign up free at arcade.software
 2. Install the Chrome extension
 3. Record yourself running through `/app`:
@@ -91,7 +91,7 @@ Highest-impact remaining marketing item. Two options:
 4. Add 3 hover tooltips on key moments
 5. Copy the share/embed URL → paste it here
 
-**Option B — Loom** (faster but linear)
+**Option B - Loom** (faster but linear)
 1. Record a 60-90 sec screen capture doing the same flow
 2. Share URL → paste here
 
@@ -108,14 +108,14 @@ emails go back to spam.
 
 ---
 
-## Optional — when you have appetite
+## Optional - when you have appetite
 
 - **SOC2 prep**: drop me a yes when you want to start the Vanta /
   Drata onboarding. Real customers above $5k MRR will start asking.
 - **Cal.com booking link** for "Talk to a human" in the Whale tier
-  CTA. Currently mailto: — booking is higher conversion.
+  CTA. Currently mailto: - booking is higher conversion.
 - **Statuspage.io** mirror of `/version` for ambient social proof.
-- **Stripe tax** — turn on Stripe Tax in dashboard so EU/CA
+- **Stripe tax** - turn on Stripe Tax in dashboard so EU/CA
   customers charge correctly without you touching invoices.
 
 ---

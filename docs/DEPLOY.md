@@ -3,7 +3,7 @@
 End-to-end "you can give the URL to a broker" deploy. ~20 minutes, all
 clicks, free tier on both providers (no credit card to start).
 
-## TL;DR — two buttons
+## TL;DR - two buttons
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Jzineldin/Test)
 &nbsp;&nbsp;
@@ -14,7 +14,7 @@ Then click Vercel and paste that URL when prompted.**
 
 ---
 
-## Part 1 — Backend on Render (~10 min)
+## Part 1 - Backend on Render (~10 min)
 
 ### 1. Click the Render button above
 Sign in with GitHub the first time. Render reads `render.yaml` at the
@@ -56,7 +56,7 @@ have real Bedrock access.
 
 ---
 
-## Part 2 — Dashboard on Vercel (~5 min)
+## Part 2 - Dashboard on Vercel (~5 min)
 
 ### 1. Click the Vercel button above
 Sign in with GitHub. Vercel auto-detects Next.js. Two things matter on
@@ -87,7 +87,7 @@ https://test-xyz.vercel.app
 ### 4. Click "Run triage"
 You should now see:
 - 3 carriers scored (real Claude responses)
-- 2–3 drafted emails (each different per carrier)
+- 2-3 drafted emails (each different per carrier)
 - The history panel populating
 - The billing badge showing `trial · 1/50`
 
@@ -107,7 +107,7 @@ Three subsystems are still on stubs even after the deploy:
 | Real Stripe checkout | `STRIPE_SECRET_KEY` + a live Price |
 
 Each is its own ~30-min "create the account, paste the keys, restart"
-loop. Same shape as Part 1 — set env vars in Render's dashboard.
+loop. Same shape as Part 1 - set env vars in Render's dashboard.
 
 ---
 
@@ -127,20 +127,20 @@ DB. `alembic upgrade head` rebuilds the schema on first boot of the new DB.
 
 ## Troubleshooting
 
-**Render build fails on `pip install psycopg2-binary`** — Render's
+**Render build fails on `pip install psycopg2-binary`** - Render's
 Python 3.11 image has the postgres dev headers. If you see a libpq
 error, switch to Render's Python 3.11 runtime explicitly via
 `PYTHON_VERSION=3.11` (already in `render.yaml`).
 
-**Triage returns 500 with `UnrecognizedClientException`** — your AWS
+**Triage returns 500 with `UnrecognizedClientException`** - your AWS
 keys in Render's Environment tab are wrong. Open Render → Environment,
 click the eye icon next to `AWS_ACCESS_KEY_ID`, verify it matches what
 your local `aws sts get-caller-identity` returns.
 
-**Dashboard shows `CORS error`** — `CORS_ORIGINS` on Render still
+**Dashboard shows `CORS error`** - `CORS_ORIGINS` on Render still
 contains `*` or doesn't include your Vercel URL. Edit it, save, wait
 30 s for restart.
 
-**"Triage" button does nothing** — the dashboard's `NEXT_PUBLIC_API_URL`
+**"Triage" button does nothing** - the dashboard's `NEXT_PUBLIC_API_URL`
 isn't set on Vercel. Vercel → Project → Settings → Environment Variables
 → add it → redeploy.
