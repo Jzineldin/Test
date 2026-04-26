@@ -338,6 +338,7 @@ def update_settings(
     body: OrgSettings, org: CurrentOrg = Depends(current_org),
 ) -> dict[str, Any]:
     """Org-level settings update — webhook URL, inbox alias, display name."""
+    _require_admin(org)
     with session_scope() as session:
         from .db.models import Org as OrgRow
         row = session.get(OrgRow, org.id)
@@ -518,6 +519,7 @@ def remove_user(
 def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
     """Mint a new bearer key, invalidating the old one immediately.
     Returns the new key in the body — never logged, never echoed back."""
+    _require_admin(org)
     from .db import generate_api_key
     with session_scope() as session:
         from .db.models import Org as OrgRow
@@ -562,6 +564,7 @@ def upsert_carrier(
 
     Persisted to the DB so it survives Render restarts; scoped by
     org_id so brokerages don't leak appetite into each other."""
+    _require_admin(org)
     payload = carrier.model_dump(mode="json")
     with session_scope() as session:
         upsert_carrier_payload(
@@ -589,6 +592,7 @@ def bulk_upsert_carriers(
     import flow so a broker pasting 25 markets doesn't fire 25 round
     trips. Per-row errors are collected and returned, not raised — partial
     success is the common case (typo in one row shouldn't block the rest)."""
+    _require_admin(org)
     created = 0
     updated = 0
     failed: list[dict[str, str]] = []
@@ -623,6 +627,7 @@ def bulk_upsert_carriers(
 def delete_carrier_endpoint(
     carrier_id: str, org: CurrentOrg = Depends(current_org),
 ) -> None:
+    _require_admin(org)
     with session_scope() as session:
         if not delete_carrier(session, org_id=org.id, carrier_id=carrier_id):
             raise HTTPException(404, detail=f"Carrier {carrier_id!r} not found")
@@ -769,6 +774,10 @@ def triage_bulk(
     submissions: list[Submission],
     org: CurrentOrg = Depends(current_org),
 ) -> BulkTriageResponse:
+    """Run triage on N submissions in one request (admin-only — bulk
+    bypasses our normal rate-limiter assumptions, so we keep it
+    behind admin role for cookie-authed users)."""
+    _require_admin(org)
     """Run triage on N submissions in one request.
 
     Sequential — Claude has rate limits and we don't want one slow LLM

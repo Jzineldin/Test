@@ -309,12 +309,8 @@ def test_get_api_key_returns_bearer_token(client):
 
 def test_rotate_api_key_changes_value_and_invalidates_old(client):
     user_id = _seed_user(client)
-    import app.db as db_pkg
-    from app.db.models import User
-    from app.magic_link import issue_magic_link
-    with db_pkg.session_scope() as session:
-        token = issue_magic_link(session, session.get(User, user_id))
-    client.post("/auth/verify", json={"token": token})
+    # Rotation is admin-only — promote then sign in as admin.
+    _login_as_admin(client, user_id)
 
     old = client.get("/me/api-key").json()["api_key"]
     new = client.post("/me/api-key/rotate").json()["api_key"]
@@ -331,6 +327,36 @@ def test_rotate_api_key_changes_value_and_invalidates_old(client):
     good_after = client.get("/me", headers={"Authorization": f"Bearer {new}"}).status_code
     assert bad_after == 401
     assert good_after == 200
+
+
+def test_csr_role_blocks_admin_endpoints(client):
+    """A CSR-cookie-authed user can't mutate carriers, settings, or
+    rotate the api key."""
+    user_id = _seed_user(client)  # default role='csr'
+    import app.db as db_pkg
+    from app.db.models import User
+    from app.magic_link import issue_magic_link
+    with db_pkg.session_scope() as session:
+        token = issue_magic_link(session, session.get(User, user_id))
+    client.post("/auth/verify", json={"token": token})
+
+    sample_carrier = {
+        "carrier_id": "x", "name": "X",
+        "submission_email": "x@y.com",
+        "typical_quote_back_days": 5,
+        "appetite": [{
+            "naics_prefixes": [], "states_in": [], "states_out": [],
+            "lines": ["general_liability"],
+        }],
+    }
+    assert client.post("/carriers", json=sample_carrier).status_code == 403
+    assert client.post("/carriers/bulk", json=[sample_carrier]).status_code == 403
+    assert client.delete("/carriers/anything").status_code == 403
+    assert client.patch("/me", json={"name": "X"}).status_code == 403
+    assert client.post("/me/api-key/rotate").status_code == 403
+    # CSRs CAN read and triage.
+    assert client.get("/me").status_code == 200
+    assert client.get("/me/api-key").status_code == 200
 
 
 def test_session_cookie_and_api_key_both_work(client):
