@@ -72,6 +72,30 @@ CARRIERS_DIR = Path(os.environ.get(
 configure_logging()
 logger = logging.getLogger("submission_triage")
 
+def _init_sentry() -> None:
+    """Activate Sentry only when SENTRY_DSN is set. Safe to import in dev
+    or test environments — no DSN means no init, no network traffic."""
+    dsn = os.environ.get("SENTRY_DSN", "").strip()
+    if not dsn:
+        return
+    try:
+        import sentry_sdk  # noqa: PLC0415
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=os.environ.get("RENDER_GIT_BRANCH", "production"),
+            release=os.environ.get("RENDER_GIT_COMMIT", "")[:12] or None,
+            traces_sample_rate=float(
+                os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+            ),
+            send_default_pii=False,  # we send underwriting data — never log it
+        )
+    except Exception:
+        # Sentry failing to init must never block app boot.
+        logging.getLogger(__name__).exception("sentry.init_failed")
+
+
+_init_sentry()
+
 app = FastAPI(title="Submission Triage Agent", version="0.5.0")
 
 # slowapi: per-key/per-IP throttling. Specific routes can override with
