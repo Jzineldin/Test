@@ -339,6 +339,8 @@ export default function Home() {
         <SettingsPanel apiKey={apiKey} onClose={() => setShowSettings(false)} />
       )}
 
+      {history.length === 0 && !result && <WelcomeBanner />}
+
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
         <div>
           <ModeTabs mode={mode} onChange={setMode} />
@@ -1143,6 +1145,73 @@ function Matches({
         </table>
       </div>
       <p className="mt-3 text-xs italic text-slate-400">{summary}</p>
+    </section>
+  );
+}
+
+function WelcomeBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <section className="mb-8 rounded-md border border-emerald-700 bg-emerald-500/5 p-5">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-emerald-300">
+          Welcome — let's get you running
+        </h2>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-xs text-slate-500 hover:text-slate-300"
+        >
+          Dismiss
+        </button>
+      </div>
+      <p className="mt-2 text-sm text-slate-300">
+        Your account ships with four sample carriers (Atlas, Keystone,
+        Redwood, Great Basin) so the demo flow works zero-click. Take any
+        of these next steps when you're ready:
+      </p>
+      <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            n: "1",
+            title: "Run a sample triage",
+            body: "Click Paste JSON → Reset to sample → Run triage. See how Atlas + Keystone score on the Acme Plumbing TX submission.",
+          },
+          {
+            n: "2",
+            title: "Add your real carriers",
+            body: "Go to Carriers and add the markets you actually quote with. NAICS prefixes, states, lines, revenue band.",
+            href: "/app/carriers",
+          },
+          {
+            n: "3",
+            title: "Invite your CSRs",
+            body: "Add teammates from the Team page so they can run triages under the same org.",
+            href: "/app/users",
+          },
+        ].map((s) => (
+          <li
+            key={s.n}
+            className="rounded-md border border-slate-800 bg-slate-950 p-3"
+          >
+            <p className="text-xs uppercase tracking-widest text-emerald-400">
+              Step {s.n}
+            </p>
+            <p className="mt-1 text-sm font-medium text-slate-100">{s.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              {s.body}
+            </p>
+            {s.href && (
+              <Link
+                href={s.href}
+                className="mt-2 inline-block text-xs text-emerald-400 hover:underline"
+              >
+                Go →
+              </Link>
+            )}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
