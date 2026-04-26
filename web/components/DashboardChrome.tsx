@@ -10,6 +10,7 @@ const API_KEY_STORAGE = "submission-triage-api-key";
 interface MeShape {
   org_name?: string;
   user_role?: "admin" | "csr" | null;
+  forward_inbox_address?: string | null;
 }
 
 /**
@@ -73,6 +74,15 @@ export function DashboardHeader({
             {isAdmin && <NavLink href="/app/carriers">Carriers</NavLink>}
             {isAdmin && <NavLink href="/app/users">Team</NavLink>}
             <NavLink href="/app/audit">Audit</NavLink>
+            {me && !me.forward_inbox_address && isAdmin && (
+              <Link
+                href="/app/setup"
+                className="ml-1 rounded-full border border-amber-700/60 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200 hover:bg-amber-500/20"
+                title="Forward-inbox alias not configured yet"
+              >
+                ! Finish setup
+              </Link>
+            )}
             <button
               onClick={logout}
               className="ml-2 rounded-md border border-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-900"
@@ -114,6 +124,15 @@ export function DashboardHeader({
                 </DrawerLink>
               )}
               <DrawerLink href="/app/audit" onClose={() => setOpen(false)}>Audit</DrawerLink>
+              {me && !me.forward_inbox_address && isAdmin && (
+                <Link
+                  href="/app/setup"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md border border-amber-700/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
+                >
+                  ! Finish setup
+                </Link>
+              )}
               <button
                 onClick={() => {
                   setOpen(false);
