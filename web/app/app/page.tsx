@@ -99,15 +99,6 @@ export default function Home() {
     localStorage.setItem(API_KEY_STORAGE, key);
   }
 
-  async function logout() {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-    localStorage.removeItem(API_KEY_STORAGE);
-    router.replace("/login");
-  }
-
   const [historyLimit, setHistoryLimit] = useState(20);
 
   const loadHistory = useCallback(async () => {
