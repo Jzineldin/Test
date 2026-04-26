@@ -71,6 +71,7 @@ export function DashboardHeader({
           </Link>
           <nav className="hidden items-center gap-1 text-sm md:flex">
             <NavLink href="/app">Triage</NavLink>
+            <NavLink href="/app/queue">Queue</NavLink>
             {isAdmin && <NavLink href="/app/carriers">Carriers</NavLink>}
             {isAdmin && <NavLink href="/app/users">Team</NavLink>}
             <NavLink href="/app/audit">Audit</NavLink>
@@ -113,6 +114,7 @@ export function DashboardHeader({
           <nav className="border-t border-slate-900 bg-slate-950 md:hidden">
             <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 text-sm">
               <DrawerLink href="/app" onClose={() => setOpen(false)}>Triage</DrawerLink>
+              <DrawerLink href="/app/queue" onClose={() => setOpen(false)}>Queue</DrawerLink>
               {isAdmin && (
                 <DrawerLink href="/app/carriers" onClose={() => setOpen(false)}>
                   Carriers

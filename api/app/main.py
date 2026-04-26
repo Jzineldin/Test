@@ -1216,6 +1216,40 @@ def send_draft(
         return _draft_to_status(draft)
 
 
+@app.get("/drafts", response_model=list[DraftStatus])
+def list_drafts(
+    status: str = "all",
+    limit: int = 100,
+    org: CurrentOrg = Depends(current_org),
+) -> list[DraftStatus]:
+    """Cross-run draft inbox. `status` ∈ {all, drafted, sent, replied, bound, declined}.
+    'drafted' = generated but not yet sent. Most recent first."""
+    valid = {"all", "drafted", "sent", "replied", "bound", "declined"}
+    if status not in valid:
+        raise HTTPException(400, detail=f"status must be one of {sorted(valid)}")
+    with session_scope() as session:
+        from sqlalchemy import select
+        from .db.models import DraftedEmailRow, TriageRun
+        stmt = (
+            select(DraftedEmailRow)
+            .join(TriageRun, DraftedEmailRow.run_id == TriageRun.id)
+            .where(TriageRun.org_id == org.id)
+            .order_by(DraftedEmailRow.id.desc())
+            .limit(limit)
+        )
+        if status == "drafted":
+            stmt = stmt.where(DraftedEmailRow.sent_at.is_(None))
+        elif status == "sent":
+            stmt = stmt.where(DraftedEmailRow.sent_at.is_not(None))
+        elif status == "replied":
+            stmt = stmt.where(DraftedEmailRow.quote_replied_at.is_not(None))
+        elif status == "bound":
+            stmt = stmt.where(DraftedEmailRow.outcome == "bound")
+        elif status == "declined":
+            stmt = stmt.where(DraftedEmailRow.outcome == "declined")
+        return [_draft_to_status(d) for d in session.execute(stmt).scalars()]
+
+
 @app.get("/drafts/{draft_id}", response_model=DraftStatus)
 def get_draft_status(
     draft_id: int, org: CurrentOrg = Depends(current_org),

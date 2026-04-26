@@ -174,6 +174,35 @@ def test_parse_only_503_when_docai_unconfigured(client):
     assert r.status_code == 503
 
 
+def test_drafts_queue_filters_by_status(client):
+    _seed(client, insured="Acme Plumbing")
+    runs = client.get("/history", headers=HEADERS).json()
+    detail = client.get(f"/history/{runs[0]['id']}", headers=HEADERS).json()
+    drafts = detail["result"]["drafted_emails"]
+    if not drafts:
+        return  # stub LLM produced no drafts
+    draft_id = drafts[0]["id"]
+
+    # Fresh draft should appear under 'drafted'.
+    resp = client.get("/drafts?status=drafted", headers=HEADERS).json()
+    assert any(d["id"] == draft_id for d in resp)
+    # And NOT under 'sent'.
+    sent = client.get("/drafts?status=sent", headers=HEADERS).json()
+    assert not any(d["id"] == draft_id for d in sent)
+
+    # After send, flips.
+    client.post(f"/drafts/{draft_id}/send", headers=HEADERS)
+    resp2 = client.get("/drafts?status=sent", headers=HEADERS).json()
+    assert any(d["id"] == draft_id for d in resp2)
+    drafted_after = client.get("/drafts?status=drafted", headers=HEADERS).json()
+    assert not any(d["id"] == draft_id for d in drafted_after)
+
+
+def test_drafts_queue_invalid_status_400(client):
+    r = client.get("/drafts?status=garbage", headers=HEADERS)
+    assert r.status_code == 400
+
+
 def test_delete_history_run_removes_it_and_audits(client):
     _seed(client, insured="Doomed Co", state="TX")
     runs = client.get("/history", headers=HEADERS).json()
