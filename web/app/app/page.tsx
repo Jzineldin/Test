@@ -1794,7 +1794,15 @@ function Matches({
 }
 
 function WelcomeBanner() {
+  const KEY = "welcome-banner-dismissed";
   const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem(KEY) === "1") setDismissed(true);
+  }, []);
+  function dismiss() {
+    setDismissed(true);
+    localStorage.setItem(KEY, "1");
+  }
   if (dismissed) return null;
   return (
     <section className="mb-8 rounded-md border border-emerald-700 bg-emerald-500/5 p-5">
@@ -1803,7 +1811,7 @@ function WelcomeBanner() {
           Welcome - let's get you running
         </h2>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
           className="text-xs text-slate-500 hover:text-slate-300"
         >
           Dismiss
