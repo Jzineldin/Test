@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { DashboardHeader } from "@/components/DashboardChrome";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_KEY_STORAGE = "submission-triage-api-key";
@@ -130,25 +131,13 @@ export default function UsersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
-            Team
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Invite CSRs and other admins. Magic-link sign-in - no shared
-            passwords.
-          </p>
-        </div>
-        <Link
-          href="/app"
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-        >
-          ← Back
-        </Link>
-      </header>
+    <main className="min-h-screen pb-12">
+      <DashboardHeader
+        title="Team"
+        subtitle="Invite CSRs and other admins. Magic-link sign-in, no shared passwords."
+      />
 
+      <div className="mx-auto max-w-4xl px-4 sm:px-6">
       {error && (
         <div className="mb-6 rounded-md border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
           {error}
@@ -276,6 +265,7 @@ export default function UsersPage() {
           )}
         </ul>
       </section>
+      </div>
     </main>
   );
 }

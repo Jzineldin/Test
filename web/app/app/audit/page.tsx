@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { DashboardHeader } from "@/components/DashboardChrome";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_KEY_STORAGE = "submission-triage-api-key";
@@ -79,34 +80,23 @@ export default function AuditPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
-            Audit log
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Every state change is recorded - useful for E&O incident reviews
-            and SOC 2 evidence collection.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+    <main className="min-h-screen pb-12">
+      <DashboardHeader
+        title="Audit log"
+        subtitle="Every state change is recorded. Useful for E&O incident reviews and SOC 2 evidence collection."
+        rightSlot={
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="filter by event type…"
-            className="w-56 rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+            className="w-full max-w-xs rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none sm:w-56"
           />
-          <Link
-            href="/app"
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            ← Back
-          </Link>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="overflow-hidden rounded-md border border-slate-800">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="min-w-[640px] overflow-hidden rounded-md border border-slate-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-900/50 text-xs uppercase tracking-widest text-slate-500">
             <tr>
@@ -157,6 +147,8 @@ export default function AuditPage() {
             )}
           </tbody>
         </table>
+      </div>
+      </div>
       </div>
     </main>
   );

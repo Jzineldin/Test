@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Carrier, CarrierAppetiteRule } from "@/lib/types";
+import { DashboardHeader } from "@/components/DashboardChrome";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_KEY_STORAGE = "submission-triage-api-key";
@@ -140,19 +141,11 @@ export default function CarriersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">
-            Carrier directory
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Add the carriers you actually quote with. Each rule defines an
-            appetite slice - NAICS prefix, states, lines, revenue band.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
+    <main className="min-h-screen pb-12">
+      <DashboardHeader
+          title="Carrier directory"
+          subtitle="Add the carriers you actually quote with. Each rule defines an appetite slice (NAICS prefix, states, lines, revenue band)."
+          rightSlot={<><Link
             href="/app"
             className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
           >
@@ -178,10 +171,10 @@ export default function CarriersPage() {
             className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-emerald-400"
           >
             + New carrier
-          </button>
-        </div>
-      </header>
+          </button></>}
+        />
 
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
       <details className="mb-6 rounded-md border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">
         <summary className="cursor-pointer text-slate-300">
           CSV format
@@ -296,6 +289,7 @@ export default function CarriersPage() {
           No carriers yet. Click <strong>+ New carrier</strong> to add one.
         </p>
       )}
+      </div>
     </main>
   );
 }

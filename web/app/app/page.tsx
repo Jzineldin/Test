@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ACME_PLUMBING_SUBMISSION } from "@/lib/sample";
+import { DashboardHeader } from "@/components/DashboardChrome";
 import type {
   BillingUsage,
   CarrierStats,
@@ -291,63 +292,32 @@ export default function Home() {
   const isAdmin = !me?.user_role || me.user_role === "admin";
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-10">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {me?.org_name ?? "AppetiteMatch"}
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Wholesale broker workflow - ACORD in, carrier-ready submissions out.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <HealthPill />
-          {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
-          {isAdmin && (
-            <Link
-              href="/app/carriers"
-              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+    <main className="min-h-screen pb-12">
+      <DashboardHeader
+        title="Triage"
+        subtitle="ACORD in, carrier-ready submissions out."
+        rightSlot={
+          <>
+            <HealthPill />
+            {usage && <UsageBadge usage={usage} apiKey={apiKey} />}
+            <button
+              onClick={() => setShowSettings((v) => !v)}
+              className="rounded-md border border-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-900"
             >
-              Carriers
-            </Link>
-          )}
-          {isAdmin && (
-            <Link
-              href="/app/users"
-              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-            >
-              Team
-            </Link>
-          )}
-          <Link
-            href="/app/audit"
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            Audit
-          </Link>
-          <button
-            onClick={() => setShowSettings((v) => !v)}
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            Settings
-          </button>
-          <button
-            onClick={logout}
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+              Settings
+            </button>
+          </>
+        }
+      />
 
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
       {showSettings && (
         <SettingsPanel apiKey={apiKey} onClose={() => setShowSettings(false)} />
       )}
 
       {history.length === 0 && !result && <WelcomeBanner />}
 
-      <section className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_1fr] lg:gap-8">
         <div>
           <ModeTabs mode={mode} onChange={setMode} />
           {mode === "pdf" ? (
@@ -447,6 +417,7 @@ export default function Home() {
         query={historyQuery}
         onQueryChange={setHistoryQuery}
       />
+      </div>
     </main>
   );
 }
