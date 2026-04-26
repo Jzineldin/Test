@@ -28,7 +28,7 @@ function Header() {
         <Link href="#how" className="text-slate-400 hover:text-slate-100">
           How it works
         </Link>
-        <Link href="#pricing" className="text-slate-400 hover:text-slate-100">
+        <Link href="/pricing" className="text-slate-400 hover:text-slate-100">
           Pricing
         </Link>
         <Link href="/login" className="text-slate-400 hover:text-slate-100">
