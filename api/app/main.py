@@ -319,7 +319,9 @@ def me(org: CurrentOrg = Depends(current_org)) -> dict[str, Any]:
             "monthly_submission_quota": org.monthly_submission_quota,
             "notification_webhook_url": row.notification_webhook_url,
             "forward_inbox_address": row.forward_inbox_address,
+            "email_signature": row.email_signature,
             "webhook_secret": row.webhook_secret,
+            "user_role": org.user_role,
         }
 
 
