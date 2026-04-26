@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { Carrier, CarrierAppetiteRule } from "@/lib/types";
+import type { Carrier, CarrierAppetiteRule, CarrierStats } from "@/lib/types";
 import { DashboardHeader } from "@/components/DashboardChrome";
 import { useToast } from "@/components/Toast";
 
@@ -20,6 +20,7 @@ export default function CarriersPage() {
   const [apiKey, setApiKey] = useState("");
   const [authChecked, setAuthChecked] = useState(false);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [stats, setStats] = useState<Record<string, CarrierStats>>({});
   const [editing, setEditing] = useState<Carrier | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -53,11 +54,21 @@ export default function CarriersPage() {
 
   const reload = useCallback(async () => {
     if (!authChecked) return;
-    const res = await fetch(`${API_URL}/carriers`, {
-      credentials: "include",
-      headers: authHeaders(apiKey),
-    });
-    if (res.ok) setCarriers((await res.json()) as Carrier[]);
+    const [carriersRes, statsRes] = await Promise.all([
+      fetch(`${API_URL}/carriers`, {
+        credentials: "include",
+        headers: authHeaders(apiKey),
+      }),
+      fetch(`${API_URL}/reports/by-carrier`, {
+        credentials: "include",
+        headers: authHeaders(apiKey),
+      }),
+    ]);
+    if (carriersRes.ok) setCarriers((await carriersRes.json()) as Carrier[]);
+    if (statsRes.ok) {
+      const rows = (await statsRes.json()) as CarrierStats[];
+      setStats(Object.fromEntries(rows.map((r) => [r.carrier_id, r])));
+    }
   }, [apiKey, authChecked]);
 
   useEffect(() => {
@@ -284,6 +295,28 @@ export default function CarriersPage() {
                   {c.submission_email} · quotes back ~
                   {c.typical_quote_back_days}d
                 </p>
+                {stats[c.carrier_id] && stats[c.carrier_id].drafts_sent > 0 && (
+                  <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                    <span>{stats[c.carrier_id].drafts_sent} sent</span>
+                    <span>·</span>
+                    <span className="text-sky-300">
+                      {stats[c.carrier_id].drafts_replied} replied
+                    </span>
+                    <span>·</span>
+                    <span className="text-emerald-300">
+                      {stats[c.carrier_id].drafts_bound} bound
+                    </span>
+                    {stats[c.carrier_id].drafts_replied > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>
+                          {(stats[c.carrier_id].bind_rate * 100).toFixed(0)}%
+                          bind rate
+                        </span>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 gap-2 text-xs">
                 <button
