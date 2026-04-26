@@ -217,17 +217,17 @@ export default function CarriersPage() {
             className="rounded-md border border-slate-800 bg-slate-950 p-4"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-100">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-100">
                   {c.name}{" "}
                   <span className="text-xs text-slate-500">{c.carrier_id}</span>
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 truncate text-xs text-slate-400">
                   {c.submission_email} · quotes back ~
                   {c.typical_quote_back_days}d
                 </p>
               </div>
-              <div className="flex gap-2 text-xs">
+              <div className="flex shrink-0 gap-2 text-xs">
                 <button
                   onClick={() => setEditing(c)}
                   className="rounded-md border border-slate-700 px-2 py-1 text-slate-300 hover:bg-slate-900"
