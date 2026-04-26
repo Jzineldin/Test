@@ -56,6 +56,10 @@ export const RELEASES: Release[] = [
       "**'Run another triage' button** under the result panel - resets form, scrolls to top.",
       "**submission_id pill** next to the LLM summary so brokers can reference a run.",
       "**Footer**: Changelog + RSS links. Invite emails: name the role + sign-off.",
+      "**Security**: webhook_secret hidden from CSR cookie callers (admins still see it). CORS allow_methods includes DELETE.",
+      "**/login + /signup**: auto-redirect to /app when already authed.",
+      "**/login/verify**: clearer message on expired or already-used magic link.",
+      "**CSV import preview**: confirm prompt before applying with row count + first carrier names.",
     ],
   },
   {
