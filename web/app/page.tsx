@@ -11,6 +11,7 @@ export default function Landing() {
       <HowItWorks />
       <Comparison />
       <UseCases />
+      <Beliefs />
       <Pricing />
       <SiteFooter />
     </div>
@@ -302,6 +303,53 @@ const USE_CASES = [
       "Deterministic prefilter rejects out-of-appetite before the LLM call",
       "Audit log captures every triage decision for E&O reviews",
     ],
+  },
+];
+
+function Beliefs() {
+  return (
+    <section className="border-t border-slate-900">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-100 sm:text-3xl">
+          What we believe.
+        </h2>
+        <p className="mt-2 max-w-2xl text-slate-400">
+          The opinions baked into this product, in plain language.
+        </p>
+        <ul className="mt-10 grid gap-4 sm:gap-6 md:grid-cols-2">
+          {BELIEFS.map((b) => (
+            <li
+              key={b.title}
+              className="rounded-xl border border-slate-800 bg-slate-950 p-5 sm:p-6"
+            >
+              <p className="text-sm font-medium text-emerald-400">{b.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                {b.body}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+const BELIEFS = [
+  {
+    title: "The agent doesn't replace the broker.",
+    body: "It does the boring 90% so the broker can spend time on the calls that close. Every cover email lands in your review queue, never in a carrier's inbox without your click.",
+  },
+  {
+    title: "Your appetite library is yours.",
+    body: "Per-org, editable, exportable as CSV. We don't share, train on, or aggregate it. Switching carriers doesn't require a support ticket.",
+  },
+  {
+    title: "Plain ASCII, no AI tells.",
+    body: "No em dashes, no glossy adjectives, no 'happy to assist' filler. Every drafted email reads like a wholesale broker wrote it because every prompt is opinionated about that.",
+  },
+  {
+    title: "Fast feedback over heavy process.",
+    body: "Settings change immediately. New carriers triage on the next submission. Audit log captures every state change for E&O reviews. No quarterly release cycles.",
   },
 ];
 
