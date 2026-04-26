@@ -292,6 +292,12 @@ export default function Home() {
           >
             Carriers
           </Link>
+          <Link
+            href="/app/audit"
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Audit
+          </Link>
           <button
             onClick={() => setShowSettings((v) => !v)}
             className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
@@ -499,7 +505,84 @@ function SettingsPanel({
         </button>
         {savedAt && <span className="text-xs text-emerald-400">✓ saved {savedAt}</span>}
       </div>
+
+      <ApiKeyManager apiKey={apiKey} />
     </section>
+  );
+}
+
+function ApiKeyManager({ apiKey }: { apiKey: string }) {
+  const [revealed, setRevealed] = useState<string | null>(null);
+  const [rotating, setRotating] = useState(false);
+
+  async function reveal() {
+    const r = await fetch(`${API_URL}/me/api-key`, {
+      credentials: "include",
+      headers: authHeaders(apiKey),
+    });
+    if (r.ok) setRevealed((await r.json()).api_key as string);
+  }
+
+  async function rotate() {
+    if (
+      !confirm(
+        "Rotating invalidates the current key immediately. Anything using it (curl, Zapier, AMS integrations) will start failing until you paste in the new key. Continue?",
+      )
+    ) {
+      return;
+    }
+    setRotating(true);
+    const r = await fetch(`${API_URL}/me/api-key/rotate`, {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(apiKey),
+    });
+    setRotating(false);
+    if (r.ok) setRevealed((await r.json()).api_key as string);
+  }
+
+  return (
+    <div className="mt-8 rounded-md border border-slate-800 bg-slate-950 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+        API key
+      </h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Bearer token for programmatic access. Use it as{" "}
+        <code className="text-slate-300">Authorization: Bearer &lt;key&gt;</code>{" "}
+        when calling the API directly.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {revealed ? (
+          <code className="rounded border border-slate-800 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-200 break-all">
+            {revealed}
+          </code>
+        ) : (
+          <button
+            onClick={reveal}
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+          >
+            Show key
+          </button>
+        )}
+        <button
+          onClick={rotate}
+          disabled={rotating}
+          className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-950 disabled:opacity-50"
+        >
+          {rotating ? "Rotating…" : "Rotate"}
+        </button>
+        {revealed && (
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(revealed);
+            }}
+            className="text-xs text-emerald-400 hover:underline"
+          >
+            Copy
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

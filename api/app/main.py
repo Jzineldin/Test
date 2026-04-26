@@ -303,6 +303,32 @@ def update_settings(
         }
 
 
+@app.get("/me/api-key")
+def get_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
+    """Return the org's bearer API key — required for the Slack/curl path.
+    Cookie auth gates the call so the key never appears in URL params."""
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        return {"api_key": row.api_key}
+
+
+@app.post("/me/api-key/rotate")
+def rotate_api_key(org: CurrentOrg = Depends(current_org)) -> dict[str, str]:
+    """Mint a new bearer key, invalidating the old one immediately.
+    Returns the new key in the body — never logged, never echoed back."""
+    from .db import generate_api_key
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        new_key = generate_api_key()
+        row.api_key = new_key
+        record_audit_event(
+            session, org_id=org.id, event_type="api_key.rotated",
+        )
+        return {"api_key": new_key}
+
+
 def _org_carriers(org_id: int) -> list[Carrier]:
     """Read carriers for an org, seeding the bundled samples on first call.
 

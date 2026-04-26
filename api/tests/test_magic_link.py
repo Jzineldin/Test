@@ -222,6 +222,46 @@ def test_signup_with_colliding_company_name_appends_suffix(client):
         assert slugs == ["acme", "acme-2"]
 
 
+def test_get_api_key_returns_bearer_token(client):
+    user_id = _seed_user(client)
+    import app.db as db_pkg
+    from app.db.models import User
+    from app.magic_link import issue_magic_link
+    with db_pkg.session_scope() as session:
+        token = issue_magic_link(session, session.get(User, user_id))
+    client.post("/auth/verify", json={"token": token})
+
+    r = client.get("/me/api-key")
+    assert r.status_code == 200
+    assert r.json()["api_key"]  # demo org's key, returned as-is
+
+
+def test_rotate_api_key_changes_value_and_invalidates_old(client):
+    user_id = _seed_user(client)
+    import app.db as db_pkg
+    from app.db.models import User
+    from app.magic_link import issue_magic_link
+    with db_pkg.session_scope() as session:
+        token = issue_magic_link(session, session.get(User, user_id))
+    client.post("/auth/verify", json={"token": token})
+
+    old = client.get("/me/api-key").json()["api_key"]
+    new = client.post("/me/api-key/rotate").json()["api_key"]
+    assert new != old
+    assert new.startswith("stk_")
+
+    # The old bearer is dead, the new one resolves.
+    bad = client.get("/me", headers={"Authorization": f"Bearer {old}"}).status_code
+    good = client.get("/me", headers={"Authorization": f"Bearer {new}"}).status_code
+    # Bad: cookie still works (we're authed as the user); but raw old key alone wouldn't.
+    # So drop the cookie to isolate the api-key path.
+    client.cookies.delete("triage_session")
+    bad_after = client.get("/me", headers={"Authorization": f"Bearer {old}"}).status_code
+    good_after = client.get("/me", headers={"Authorization": f"Bearer {new}"}).status_code
+    assert bad_after == 401
+    assert good_after == 200
+
+
 def test_session_cookie_and_api_key_both_work(client):
     """Bearer key (existing) and session cookie (new) both resolve to org."""
     by_key = client.get("/me", headers={
