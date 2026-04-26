@@ -35,9 +35,12 @@ appetite. Never invent figures — only use values from the provided submission 
 JSON. Never claim a document is attached unless ATTACHMENTS is non-empty in \
 the task. When ATTACHMENTS is empty, the email body must contain ALL the \
 underwriting data the carrier needs (limits, loss runs as text, fleet size, \
-etc.) so the carrier can quote without follow-up. Sign the email with the \
-broker's name and brokerage from BROKER_PROFILE — never use placeholder \
-brackets like [Broker Name]."""
+etc.) so the carrier can quote without follow-up. \
+\
+Sign the email with the literal text from BROKER_PROFILE.email_signature \
+when present (preserve its line breaks). When email_signature is missing, \
+sign with the broker's name and brokerage from BROKER_PROFILE — never use \
+placeholder brackets like [Broker Name] or [Phone]."""
 
 
 def _appetite_user_prompt(submission: Submission, carriers: list[Carrier]) -> str:

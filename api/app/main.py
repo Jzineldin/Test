@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -109,6 +109,31 @@ def _startup() -> None:
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/version")
+def version() -> dict[str, Any]:
+    """Public build/version metadata. Useful for status pages, cache
+    busting, and answering "is the deploy I'm looking at the latest?"
+    Pulls from env vars Render injects on each deploy."""
+    return {
+        "git_sha": os.environ.get("RENDER_GIT_COMMIT", "dev")[:12],
+        "branch": os.environ.get("RENDER_GIT_BRANCH", "local"),
+        "service": os.environ.get("RENDER_SERVICE_NAME", "submission-triage-api"),
+        "started_at": _STARTED_AT.isoformat(),
+        "stripe": "live" if os.environ.get("STRIPE_SECRET_KEY", "").startswith("sk_live_")
+            else ("test" if os.environ.get("STRIPE_SECRET_KEY") else "stub"),
+        "ses": "live" if os.environ.get("SES_FROM_ADDRESS") else "stub",
+        "docai": "live" if os.environ.get("DOCAI_PROCESSOR_ID") else "stub",
+        "llm": (
+            "bedrock" if os.environ.get("AWS_ACCESS_KEY_ID")
+            else "anthropic" if os.environ.get("ANTHROPIC_API_KEY")
+            else "stub"
+        ),
+    }
+
+
+_STARTED_AT = datetime.now(timezone.utc)
 
 
 # ---- Magic-link auth -------------------------------------------------------
@@ -279,6 +304,7 @@ class OrgSettings(BaseModel):
     name: str | None = None
     notification_webhook_url: str | None = None
     forward_inbox_address: str | None = None
+    email_signature: str | None = None
 
 
 @app.patch("/me")
@@ -299,6 +325,9 @@ def update_settings(
         if body.forward_inbox_address is not None:
             changes["forward_inbox_address"] = body.forward_inbox_address
             row.forward_inbox_address = body.forward_inbox_address or None
+        if body.email_signature is not None:
+            changes["email_signature"] = bool(body.email_signature)
+            row.email_signature = body.email_signature or None
         if changes:
             record_audit_event(
                 session, org_id=org.id, event_type="settings.updated",
@@ -308,6 +337,7 @@ def update_settings(
             "name": row.name,
             "notification_webhook_url": row.notification_webhook_url,
             "forward_inbox_address": row.forward_inbox_address,
+            "email_signature": row.email_signature,
         }
 
 
@@ -552,6 +582,7 @@ def _broker_profile(org_id: int) -> dict:
         return {
             "brokerage_name": row.name,
             "contact_email": (row.forward_inbox_address or "").strip() or None,
+            "email_signature": (row.email_signature or "").strip() or None,
         }
 
 

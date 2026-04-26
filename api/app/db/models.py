@@ -44,6 +44,10 @@ class Org(Base):
     monthly_submission_quota: Mapped[int] = mapped_column(Integer, default=50)
     notification_webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     forward_inbox_address: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # Multi-line signature block the email drafter pastes at the end of
+    # every carrier-bound message. Lets brokers control phone, email,
+    # license number, etc. without hardcoding into prompts.
+    email_signature: Mapped[str | None] = mapped_column(Text, nullable=True)
     # HMAC secret used to sign /webhooks/inbound + /webhooks/email payloads
     # destined for this org. Auto-generated on org creation; never null in
     # practice — the column is nullable for migration safety on existing rows.

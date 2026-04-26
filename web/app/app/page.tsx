@@ -454,6 +454,7 @@ function SettingsPanel({
     name: string;
     notification_webhook_url: string | null;
     forward_inbox_address: string | null;
+    email_signature: string | null;
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -465,6 +466,7 @@ function SettingsPanel({
         name: b.org_name,
         notification_webhook_url: b.notification_webhook_url,
         forward_inbox_address: b.forward_inbox_address,
+        email_signature: b.email_signature,
       }));
   }, [apiKey]);
 
@@ -516,6 +518,22 @@ function SettingsPanel({
             setMe({ ...me, forward_inbox_address: v || null })
           }
           placeholder="triage+yourorg@yourdomain.com"
+        />
+      </div>
+      <div className="mt-4">
+        <label className="block text-xs uppercase tracking-widest text-slate-500">
+          Email signature (used on every drafted carrier email)
+        </label>
+        <textarea
+          rows={6}
+          value={me.email_signature ?? ""}
+          onChange={(e) =>
+            setMe({ ...me, email_signature: e.target.value || null })
+          }
+          placeholder={
+            "Pat Reyes\nSenior Wholesale Broker\nTale Forge Specialty\n(555) 123-4567 · pat@taleforge.example"
+          }
+          className="mt-1 block w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs leading-relaxed text-slate-200 focus:border-emerald-500 focus:outline-none"
         />
       </div>
       <div className="mt-4 flex items-center gap-3">
