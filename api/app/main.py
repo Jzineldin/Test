@@ -1234,6 +1234,40 @@ def billing_usage(org: CurrentOrg = Depends(current_org)) -> BillingUsage:
     )
 
 
+class PortalLinkRequest(BaseModel):
+    return_url: str
+
+
+class PortalLinkResponse(BaseModel):
+    url: str
+
+
+@app.post("/billing/portal-link", response_model=PortalLinkResponse)
+def billing_portal_link(
+    body: PortalLinkRequest, org: CurrentOrg = Depends(current_org),
+) -> PortalLinkResponse:
+    """Stripe Customer Portal session for self-serve subscription management.
+
+    The customer can update their card, cancel, view invoices, or download
+    receipts — all on Stripe's hosted UI. Requires the org to already have
+    a stripe_customer_id (set on first checkout)."""
+    with session_scope() as session:
+        from .db.models import Org as OrgRow
+        row = session.get(OrgRow, org.id)
+        if not row.stripe_customer_id or row.stripe_customer_id.startswith("cus_stub_"):
+            raise HTTPException(
+                400,
+                detail="No Stripe customer on file — start a subscription first.",
+            )
+        customer_id = row.stripe_customer_id
+
+    client = get_billing_client()
+    url = client.create_portal_session(
+        customer_id=customer_id, return_url=body.return_url,
+    )
+    return PortalLinkResponse(url=url)
+
+
 @app.post("/billing/checkout-link", response_model=CheckoutLinkResponse)
 def billing_checkout_link(
     body: CheckoutLinkRequest,

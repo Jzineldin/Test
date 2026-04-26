@@ -513,7 +513,53 @@ function SettingsPanel({
       </div>
 
       <ApiKeyManager apiKey={apiKey} />
+      <BillingPortalButton apiKey={apiKey} />
     </section>
+  );
+}
+
+function BillingPortalButton({ apiKey }: { apiKey: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function open() {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`${API_URL}/billing/portal-link`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify({ return_url: window.location.href }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(await res.text());
+      return;
+    }
+    const body = (await res.json()) as { url: string };
+    window.open(body.url, "_blank");
+  }
+
+  return (
+    <div className="mt-6 rounded-md border border-slate-800 bg-slate-950 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+        Billing
+      </h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Manage your subscription, update card, view invoices on Stripe's
+        hosted portal.
+      </p>
+      <button
+        onClick={open}
+        disabled={busy}
+        className="mt-3 rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900 disabled:opacity-50"
+      >
+        {busy ? "Opening…" : "Manage subscription →"}
+      </button>
+      {error && (
+        <p className="mt-2 text-xs text-rose-300">{error}</p>
+      )}
+    </div>
   );
 }
 

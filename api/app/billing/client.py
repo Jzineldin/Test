@@ -31,6 +31,9 @@ class BillingClient(Protocol):
     def create_checkout_session(
         self, *, customer_id: str, price_id: str, success_url: str, cancel_url: str,
     ) -> CheckoutSession: ...
+    def create_portal_session(
+        self, *, customer_id: str, return_url: str,
+    ) -> str: ...
     def verify_webhook(self, *, payload: bytes, signature: str) -> dict: ...
 
 
@@ -58,6 +61,13 @@ class StubBillingClient:
             url=f"https://checkout.stripe.com/c/pay/{sid}",
             customer_id=customer_id,
         )
+
+    def create_portal_session(
+        self, *, customer_id: str, return_url: str,
+    ) -> str:
+        # Deterministic stub URL — fine for local dev; clicking it shows
+        # Stripe's "session expired" page which is harmless.
+        return f"https://billing.stripe.com/p/session/stub_{customer_id}"
 
     def verify_webhook(self, *, payload: bytes, signature: str) -> dict:
         # In stub mode we trust the payload as-is so devs can curl the
@@ -103,6 +113,15 @@ class StripeBillingClient:
         return CheckoutSession(
             id=session.id, url=session.url, customer_id=customer_id,
         )
+
+    def create_portal_session(
+        self, *, customer_id: str, return_url: str,
+    ) -> str:
+        session = self._stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=return_url,
+        )
+        return session.url
 
     def verify_webhook(self, *, payload: bytes, signature: str) -> dict:
         if not self.webhook_secret:
