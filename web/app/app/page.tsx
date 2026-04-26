@@ -545,6 +545,19 @@ function SettingsPanel({
           triage+{me.slug}@appetitematch.com
         </button>
       </p>
+      {me.forward_inbox_address &&
+        !me.forward_inbox_address.toLowerCase().endsWith("@appetitematch.com") && (
+          <p className="mt-1 text-xs text-amber-300">
+            ⚠ Custom domains (
+            <code className="text-amber-200">
+              {me.forward_inbox_address.split("@")[1]}
+            </code>
+            ) need an MX record pointing at our SES inbound endpoint - email
+            us to wire it. The shared{" "}
+            <code className="text-slate-300">@appetitematch.com</code> path
+            works out of the box.
+          </p>
+        )}
       <div className="mt-4">
         <label className="block text-xs uppercase tracking-widest text-slate-500">
           Email signature (used on every drafted carrier email)

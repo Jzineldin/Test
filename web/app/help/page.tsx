@@ -95,12 +95,24 @@ export default function HelpPage() {
 
           <H3>Forward inbound submissions to triage automatically.</H3>
           <p>
-            Configure your AMS or email rule to forward retail-agent emails
-            to <code className="text-slate-200">triage+yourorgslug@appetitematch.com</code>
-            (set the alias in <strong>Settings → Forward-inbox alias</strong>).
-            The PDF gets parsed and a triage run starts automatically. (This
-            requires the SES Inbound rule to be wired on our side - talk to
-            us if you need it activated for your alias.)
+            In <strong>Settings → Forward-inbox alias</strong>, set an
+            address like{" "}
+            <code className="text-slate-200">
+              triage+yourorgslug@appetitematch.com
+            </code>
+            . Configure your AMS or a Gmail forwarding rule to send
+            retail-agent emails there. AWS SES drops the raw email in S3,
+            our Lambda parses MIME, base64s any PDF attachments, and POSTs
+            the signed payload to{" "}
+            <code className="text-slate-200">/webhooks/email</code>. Within
+            ~10 seconds you'll see the triage run in your dashboard and any
+            configured Slack webhook will fire.
+          </p>
+          <p className="mt-2">
+            Want a custom domain (
+            <code className="text-slate-200">triage@yourbrokerage.com</code>
+            )? That works on the Whale tier - we provision an MX record on
+            your domain and wire it to the same Lambda.
           </p>
         </Section>
 
