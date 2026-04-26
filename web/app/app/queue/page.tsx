@@ -73,6 +73,17 @@ export default function QueuePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authChecked, apiKey, tab]);
 
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  function toggleSelected(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function send(id: number) {
     const r = await fetch(`${API_URL}/drafts/${id}/send`, {
       method: "POST",
@@ -85,6 +96,34 @@ export default function QueuePage() {
     } else {
       toast.push(`Send failed: ${r.status}`, "error");
     }
+  }
+
+  async function markSelected(outcome: "bound" | "declined") {
+    if (selected.size === 0) return;
+    if (
+      !confirm(
+        `Mark ${selected.size} draft${selected.size === 1 ? "" : "s"} as ${outcome}?`,
+      )
+    )
+      return;
+    let ok = 0;
+    let failed = 0;
+    for (const id of selected) {
+      const r = await fetch(`${API_URL}/drafts/${id}/outcome`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+        body: JSON.stringify({ outcome }),
+      });
+      if (r.ok) ok += 1;
+      else failed += 1;
+    }
+    toast.push(
+      `Marked ${ok}${failed ? `; ${failed} failed` : ""} as ${outcome}`,
+      failed ? "error" : "success",
+    );
+    setSelected(new Set());
+    reload();
   }
 
   async function sendAll() {
@@ -162,6 +201,25 @@ export default function QueuePage() {
               Send all {drafts.length}
             </button>
           )}
+          {(tab === "sent" || tab === "replied") && selected.size > 0 && (
+            <div className="ml-auto flex gap-2">
+              <span className="self-center text-xs text-slate-400">
+                {selected.size} selected
+              </span>
+              <button
+                onClick={() => markSelected("bound")}
+                className="rounded-md border border-emerald-700 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+              >
+                Mark bound
+              </button>
+              <button
+                onClick={() => markSelected("declined")}
+                className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900"
+              >
+                Mark declined
+              </button>
+            </div>
+          )}
         </div>
 
         {drafts.length === 0 ? (
@@ -176,7 +234,17 @@ export default function QueuePage() {
                 className="rounded-md border border-slate-800 bg-slate-950 p-4"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 flex items-baseline gap-3">
+                    {(tab === "sent" || tab === "replied") && (
+                      <input
+                        type="checkbox"
+                        checked={selected.has(d.id)}
+                        onChange={() => toggleSelected(d.id)}
+                        className="size-4 cursor-pointer accent-emerald-500"
+                        aria-label={`Select ${d.subject}`}
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-100">
                       {d.subject}
                     </p>
@@ -196,6 +264,7 @@ export default function QueuePage() {
                         </>
                       )}
                     </p>
+                    </div>
                   </div>
                   {tab === "drafted" && (
                     <button
