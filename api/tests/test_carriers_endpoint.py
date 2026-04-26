@@ -90,6 +90,25 @@ def test_delete_requires_auth(client):
     assert client.delete("/carriers/test_carrier").status_code == 401
 
 
+def test_bulk_upsert_creates_and_updates(client):
+    base = _sample_carrier()
+    other = {**_sample_carrier(), "carrier_id": "other_carrier", "name": "Other"}
+    # Seed one of them so we can verify create vs update split.
+    client.post("/carriers", json=base, headers=HEADERS)
+
+    base["typical_quote_back_days"] = 21  # change so it's a real update
+    r = client.post("/carriers/bulk", json=[base, other], headers=HEADERS)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["created"] == 1
+    assert body["updated"] == 1
+    assert body["failed"] == []
+
+    listed = {c["carrier_id"]: c for c in client.get("/carriers", headers=HEADERS).json()}
+    assert listed["test_carrier"]["typical_quote_back_days"] == 21
+    assert "other_carrier" in listed
+
+
 def test_org_carriers_are_isolated(client, monkeypatch, tmp_path):
     """Two orgs upserting the same carrier_id keep independent data."""
     import app.db as db_pkg

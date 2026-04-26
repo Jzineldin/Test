@@ -76,6 +76,44 @@ export default function CarriersPage() {
     reload();
   }
 
+  async function importCsv(file: File) {
+    setError(null);
+    let text: string;
+    try {
+      text = await file.text();
+    } catch (e) {
+      setError(`Could not read file: ${String(e)}`);
+      return;
+    }
+    let rows: Carrier[];
+    try {
+      rows = parseCsvCarriers(text);
+    } catch (e) {
+      setError(`CSV parse error: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
+    if (rows.length === 0) {
+      setError("No data rows found in CSV.");
+      return;
+    }
+    const res = await fetch(`${API_URL}/carriers/bulk`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders(apiKey) },
+      body: JSON.stringify(rows),
+    });
+    if (!res.ok) {
+      setError(`Import failed: ${res.status} ${await res.text()}`);
+      return;
+    }
+    const body = await res.json();
+    setError(
+      `✓ Imported ${body.created} new, updated ${body.updated}` +
+        (body.failed?.length ? `, ${body.failed.length} failed` : ""),
+    );
+    reload();
+  }
+
   async function remove(carrier_id: string) {
     if (!confirm(`Delete ${carrier_id}? This can't be undone.`)) return;
     const res = await fetch(
@@ -120,6 +158,21 @@ export default function CarriersPage() {
           >
             ← Back to triage
           </Link>
+          <label className="cursor-pointer rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-900">
+            Import CSV
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  importCsv(f);
+                  e.target.value = ""; // allow re-uploading the same file
+                }
+              }}
+            />
+          </label>
           <button
             onClick={() => setEditing(blankCarrier())}
             className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-emerald-400"
@@ -128,6 +181,27 @@ export default function CarriersPage() {
           </button>
         </div>
       </header>
+
+      <details className="mb-6 rounded-md border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">
+        <summary className="cursor-pointer text-slate-300">
+          CSV format
+        </summary>
+        <p className="mt-2 leading-relaxed">
+          One carrier per row, comma-separated. Header line:
+        </p>
+        <pre className="mt-2 overflow-auto rounded border border-slate-800 bg-slate-900 p-2 font-mono text-[11px]">
+          {`carrier_id,name,submission_email,typical_quote_back_days,naics_prefixes,states_in,states_out,lines,revenue_min,revenue_max,notes`}
+        </pre>
+        <p className="mt-2">
+          Use semicolons (
+          <code className="text-slate-200">;</code>) to separate multiple
+          values inside a list field — e.g.{" "}
+          <code className="text-slate-200">238;236</code> for NAICS prefixes,{" "}
+          <code className="text-slate-200">general_liability;commercial_auto</code>{" "}
+          for lines. Existing carriers (matched on carrier_id) are
+          overwritten.
+        </p>
+      </details>
 
       {error && (
         <div className="mb-6 rounded-md border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
@@ -524,4 +598,94 @@ function splitList(s: string): string[] {
 
 function upper(s: string): string {
   return s.toUpperCase();
+}
+
+/** Minimal CSV → Carrier[] parser. Handles double-quoted fields with
+ *  embedded commas; semicolons split list-typed fields (NAICS, states,
+ *  lines). Strict on header presence — throws if the required carrier_id
+ *  column is missing. */
+function parseCsvCarriers(text: string): Carrier[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const header = splitCsvRow(lines[0]).map((h) => h.toLowerCase());
+  if (!header.includes("carrier_id")) {
+    throw new Error("Header row missing required 'carrier_id' column");
+  }
+
+  function get(row: string[], col: string): string {
+    const i = header.indexOf(col);
+    return i >= 0 ? (row[i] ?? "") : "";
+  }
+
+  const carriers: Carrier[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = splitCsvRow(lines[i]);
+    const cid = get(row, "carrier_id").trim();
+    if (!cid) continue;
+    carriers.push({
+      carrier_id: cid,
+      name: get(row, "name").trim() || cid,
+      submission_email: get(row, "submission_email").trim(),
+      underwriter_name: get(row, "underwriter_name").trim() || null,
+      typical_quote_back_days:
+        parseInt(get(row, "typical_quote_back_days"), 10) || 5,
+      notes: get(row, "notes").trim() || null,
+      appetite: [
+        {
+          naics_prefixes: splitSemis(get(row, "naics_prefixes")),
+          states_in: splitSemis(get(row, "states_in")).map((s) =>
+            s.toUpperCase(),
+          ),
+          states_out: splitSemis(get(row, "states_out")).map((s) =>
+            s.toUpperCase(),
+          ),
+          lines: splitSemis(get(row, "lines")),
+          revenue_min: get(row, "revenue_min").trim() || undefined,
+          revenue_max: get(row, "revenue_max").trim() || undefined,
+        },
+      ],
+    });
+  }
+  return carriers;
+}
+
+function splitCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === ",") {
+      out.push(cur);
+      cur = "";
+    } else if (ch === '"' && cur.length === 0) {
+      inQuotes = true;
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function splitSemis(v: string): string[] {
+  return v
+    .split(/[;,]/)
+    .map((x) => x.trim())
+    .filter(Boolean);
 }

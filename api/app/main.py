@@ -549,6 +549,50 @@ def upsert_carrier(
     return carrier
 
 
+class BulkCarriersResponse(BaseModel):
+    created: int
+    updated: int
+    failed: list[dict[str, str]]
+
+
+@app.post("/carriers/bulk", response_model=BulkCarriersResponse, status_code=200)
+def bulk_upsert_carriers(
+    body: list[Carrier], org: CurrentOrg = Depends(current_org),
+) -> BulkCarriersResponse:
+    """Batch upsert N carriers in one call. Used by the dashboard's CSV
+    import flow so a broker pasting 25 markets doesn't fire 25 round
+    trips. Per-row errors are collected and returned, not raised — partial
+    success is the common case (typo in one row shouldn't block the rest)."""
+    created = 0
+    updated = 0
+    failed: list[dict[str, str]] = []
+    with session_scope() as session:
+        existing_ids = {
+            r["carrier_id"] for r in (
+                {"carrier_id": p.get("carrier_id")}
+                for p in list_carrier_payloads(session, org_id=org.id)
+            ) if r.get("carrier_id")
+        }
+        for c in body:
+            try:
+                upsert_carrier_payload(
+                    session, org_id=org.id,
+                    carrier_id=c.carrier_id,
+                    payload=c.model_dump(mode="json"),
+                )
+                if c.carrier_id in existing_ids:
+                    updated += 1
+                else:
+                    created += 1
+            except Exception as e:
+                failed.append({"carrier_id": c.carrier_id, "error": str(e)})
+        record_audit_event(
+            session, org_id=org.id, event_type="carrier.bulk_upsert",
+            details={"created": created, "updated": updated, "failed": len(failed)},
+        )
+    return BulkCarriersResponse(created=created, updated=updated, failed=failed)
+
+
 @app.delete("/carriers/{carrier_id}", status_code=204)
 def delete_carrier_endpoint(
     carrier_id: str, org: CurrentOrg = Depends(current_org),
