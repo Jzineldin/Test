@@ -114,6 +114,16 @@ export default function CarriersPage() {
       setError("No data rows found in CSV.");
       return;
     }
+    const sample = rows.slice(0, 3).map((r) => r.name || r.carrier_id).join(", ");
+    if (
+      !confirm(
+        `Import ${rows.length} carrier${rows.length === 1 ? "" : "s"} from ${file.name}?\n\n` +
+          `First few: ${sample}${rows.length > 3 ? ", ..." : ""}\n\n` +
+          `Existing carriers with the same carrier_id are overwritten.`,
+      )
+    ) {
+      return;
+    }
     const res = await fetch(`${API_URL}/carriers/bulk`, {
       method: "POST",
       credentials: "include",
