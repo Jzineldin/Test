@@ -1526,7 +1526,14 @@ function WelcomeBanner() {
       <p className="mt-2 text-sm text-slate-300">
         Your account ships with four sample carriers (Atlas, Keystone,
         Redwood, Great Basin) so the demo flow works zero-click. Take any
-        of these next steps when you're ready:
+        of these next steps when you're ready, or follow the{" "}
+        <Link
+          href="/app/setup"
+          className="font-medium text-emerald-300 underline-offset-2 hover:underline"
+        >
+          90-second setup walkthrough
+        </Link>
+        .
       </p>
       <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
