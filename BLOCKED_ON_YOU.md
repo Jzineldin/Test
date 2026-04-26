@@ -52,33 +52,17 @@ These appeared in our conversation history. Rotate them when convenient.
 - **GCP service account** `appetitematch-docai@...` -> GCP IAM ->
   service accounts -> Keys -> delete the leaked key, create a new one,
   push the new JSON to Render
+- **Org webhook secret** `whsec_A46JK4q9...` -> rotate via
+  `POST /me/webhook-secret/rotate` (or click "Rotate" in Settings),
+  then update the `WEBHOOK_SECRET` env var on the
+  `appetitematch-ses-inbound` Lambda
 
 For each, after rotation: update the env var on Render via the API
 (or the dashboard) and trigger a new deploy.
 
 ---
 
-## 3. AWS SES Inbound rule (15 min, one-time)
-
-Backend webhook (`/webhooks/email`) is wired and tested. AWS Console
-side isn't done yet. Without it, the "broker forwards an inbound to
-triage+slug@appetitematch.com" flow never triggers.
-
-Steps in AWS Console:
-1. SES -> Email receiving -> Receipt rule sets -> Create rule set
-2. Add a rule:
-   - Recipient: `triage+*@appetitematch.com` (catch-all on the local part)
-   - Action: **Invoke Lambda** (or **Publish to SNS** -> call our webhook)
-3. Lambda forwards the parsed message + base64'd attachments to:
-   `POST https://submission-triage-api.onrender.com/webhooks/email`
-   (body shape documented at `/docs`)
-4. HMAC-sign the body using the org's `webhook_secret` (from Settings)
-
-Tell me when it's set up, I can sanity-check the Lambda code shape.
-
----
-
-## 4. Demo recording (~10 min, you on screen)
+## 3. Demo recording (~10 min, you on screen)
 
 Highest-impact remaining marketing item.
 
@@ -101,7 +85,7 @@ I'll wire the embed into the landing hero and `/try` page when you have the URL.
 
 ---
 
-## 5. Cloudflare DNS sanity check (5 min)
+## 4. Cloudflare DNS sanity check (5 min)
 
 While you're rotating keys: confirm the SES DKIM CNAMEs and DMARC TXT
 for `appetitematch.com` are still set to "DNS only" (gray cloud). If
@@ -110,7 +94,7 @@ to spam.
 
 ---
 
-## 6. Browser smoke test on phone + tablet (5 min)
+## 5. Browser smoke test on phone + tablet (5 min)
 
 Big UI overhaul shipped tonight. Open `https://appetitematch.com`
 in Chrome dev-tools mobile mode (or actual phone) and verify:
@@ -140,7 +124,15 @@ in Chrome dev-tools mobile mode (or actual phone) and verify:
 
 Last updated: 2026-04-26.
 Branch: `claude/ai-agent-venture-builder-taoWC` · 134 tests green.
-~55 commits since the last redeploy.
+
+## Just shipped
+
+- **AWS SES Inbound is live end-to-end.** Lambda
+  `appetitematch-ses-inbound` (us-east-1) reads raw mail from
+  `s3://appetitematch-ses-inbound/incoming/`, parses MIME,
+  HMAC-signs, and POSTs to `/webhooks/email`. Smoke test passed
+  (see triage history). Code lives at `infra/lambda/ses_inbound.py`,
+  setup notes at `infra/lambda/SES_INBOUND_SETUP.md`.
 
 ## What landed this session (high-level)
 
