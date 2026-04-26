@@ -1,0 +1,57 @@
+# Local-dev stack — Postgres + API + (optionally) the Next.js dashboard.
+# Mirrors the prod setup closely enough to debug deploy issues locally.
+#
+# Usage:
+#   docker compose up        # starts db + api on :8000
+#   docker compose --profile web up  # also starts the dashboard on :3000
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: triage
+      POSTGRES_PASSWORD: triage
+      POSTGRES_DB: triage
+    ports:
+      - "5432:5432"
+    volumes:
+      - triage_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://triage:triage@db:5432/triage
+      CARRIERS_DIR: /app/data/carriers
+      CORS_ORIGINS: http://localhost:3000
+      # No real provider keys set — the stubs handle local dev.
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount bundled sample carriers so auto-seed has data without
+      # baking them into the image.
+      - ./data:/app/data:ro
+
+  web:
+    profiles: ["web"]
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  triage_pg:
