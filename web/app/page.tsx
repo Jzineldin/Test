@@ -400,8 +400,8 @@ const PLANS = [
       "Dedicated SLA + Slack channel",
       "On-site training for CSR team",
     ],
-    cta: "Talk to a human",
-    href: "mailto:hello@appetitematch.com",
+    cta: "Book a call",
+    href: "/book",
     highlight: false,
   },
 ];

@@ -133,8 +133,8 @@ const PLANS = [
       "On-site CSR onboarding",
       "SOC 2 + DPA on request",
     ],
-    cta: "Talk to a human",
-    href: "mailto:hello@appetitematch.com?subject=AppetiteMatch%20Whale%20tier",
+    cta: "Book a call",
+    href: "/book",
     highlight: false,
   },
 ];
