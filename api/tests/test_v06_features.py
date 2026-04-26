@@ -174,6 +174,26 @@ def test_parse_only_503_when_docai_unconfigured(client):
     assert r.status_code == 503
 
 
+def test_delete_history_run_removes_it_and_audits(client):
+    _seed(client, insured="Doomed Co", state="TX")
+    runs = client.get("/history", headers=HEADERS).json()
+    target = next(r for r in runs if r["insured_name"] == "Doomed Co")
+    r = client.delete(f"/history/{target['id']}", headers=HEADERS)
+    assert r.status_code == 204
+    # Gone.
+    assert client.get(
+        f"/history/{target['id']}", headers=HEADERS,
+    ).status_code == 404
+    # Audit event recorded.
+    audit = client.get("/audit", headers=HEADERS).json()
+    types = {e["event_type"] for e in audit}
+    assert "triage.deleted" in types
+
+
+def test_delete_history_run_404_on_missing(client):
+    assert client.delete("/history/999999", headers=HEADERS).status_code == 404
+
+
 def test_check_appetite_partitions_carriers_by_prefilter(client):
     """The prefilter is deterministic - this submission is GL-only in TX,
     so any seeded carrier whose appetite excludes TX or doesn't write GL

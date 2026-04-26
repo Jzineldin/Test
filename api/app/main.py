@@ -1807,3 +1807,24 @@ def history_detail(
             submission_json=run.submission_json,
             result=result,
         )
+
+
+@app.delete("/history/{run_id}", status_code=204)
+def history_delete(
+    run_id: int, org: CurrentOrg = Depends(current_org),
+) -> None:
+    """Delete a triage run + its matches + its drafts. Admin-only,
+    audit-logged. Cascade is handled by the FK ondelete in db.models.
+    Useful for pruning duplicate or test runs from the dashboard."""
+    _require_admin(org)
+    with session_scope() as session:
+        run = get_triage_run(session, run_id, org_id=org.id)
+        if run is None:
+            raise HTTPException(404, detail=f"Triage run {run_id} not found")
+        insured = run.insured_name
+        session.delete(run)
+        record_audit_event(
+            session, org_id=org.id, event_type="triage.deleted",
+            target_id=str(run_id), details={"insured_name": insured},
+        )
+    return None

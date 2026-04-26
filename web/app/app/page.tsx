@@ -326,6 +326,21 @@ export default function Home() {
     }
   }
 
+  async function deleteHistoryRun(runId: number, insured: string) {
+    if (!confirm(`Delete triage run for ${insured}? Cannot be undone.`)) return;
+    const res = await fetch(`${API_URL}/history/${runId}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: authHeaders(apiKey),
+    });
+    if (res.status === 204) {
+      toast.push("Triage run deleted", "success");
+      loadHistory();
+    } else {
+      toast.push(`Delete failed: ${res.status}`, "error");
+    }
+  }
+
   async function uploadPdf(): Promise<Response> {
     if (!pdfFile) throw new Error("Drop or pick an ACORD PDF first.");
     const form = new FormData();
@@ -574,6 +589,7 @@ export default function Home() {
       <History
         history={history}
         onOpen={openHistoryRun}
+        onDelete={deleteHistoryRun}
         apiKey={apiKey}
         query={historyQuery}
         onQueryChange={setHistoryQuery}
@@ -1077,6 +1093,7 @@ function ReportStrip({ report }: { report: ReportPayload }) {
 function History({
   history,
   onOpen,
+  onDelete,
   apiKey,
   query,
   onQueryChange,
@@ -1086,6 +1103,7 @@ function History({
 }: {
   history: TriageRunSummary[];
   onOpen: (id: number) => void;
+  onDelete: (id: number, insured: string) => void;
   apiKey: string;
   query: { insured: string; state: string; carrier_id: string };
   onQueryChange: (q: { insured: string; state: string; carrier_id: string }) => void;
@@ -1182,12 +1200,21 @@ function History({
                   {row.draft_count}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    onClick={() => onOpen(row.id)}
-                    className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-900"
-                  >
-                    Open
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => onOpen(row.id)}
+                      className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-900"
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={() => onDelete(row.id, row.insured_name)}
+                      className="rounded-md border border-red-900 px-2 py-1 text-xs text-red-400 hover:bg-red-950"
+                      aria-label={`Delete triage for ${row.insured_name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
