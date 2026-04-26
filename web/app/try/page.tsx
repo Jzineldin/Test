@@ -106,21 +106,21 @@ export default function TryPage() {
     <main className="min-h-screen">
       <SiteHeader />
 
-      <section className="mx-auto max-w-6xl px-6 pt-8 pb-20">
-        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-emerald-400">
-          Live demo · no signup required
+      <section className="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pb-20">
+        <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-emerald-400 sm:text-xs">
+          Live demo, no signup required
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-100 sm:text-4xl">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-100 sm:text-4xl">
           See it run on a real submission.
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-400">
-          Below is a Tampa HVAC contractor - $5.8M revenue, GL + Auto +
+          Below is a Tampa HVAC contractor: $5.8M revenue, GL + Auto +
           Umbrella, 5-year loss runs. Click run to see how the agent scores
-          carriers and drafts the cover email. (This page is pre-baked so you
-          don't burn LLM tokens - sign up for the real triage.)
+          carriers and drafts the cover email. This page is pre-baked so you
+          don't burn LLM tokens; sign up for the real triage.
         </p>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[420px_1fr]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[400px_1fr] lg:gap-8">
           <div>
             <div className="mb-2 text-xs uppercase tracking-widest text-slate-500">
               Submission JSON
