@@ -1060,13 +1060,53 @@ function JsonEditor({
   value: string;
   onChange: (v: string) => void;
 }) {
+  let parseError: string | null = null;
+  try {
+    if (value.trim()) JSON.parse(value);
+  } catch (e) {
+    parseError = e instanceof Error ? e.message : "Invalid JSON";
+  }
+
+  function format() {
+    try {
+      onChange(JSON.stringify(JSON.parse(value), null, 2));
+    } catch {
+      /* leave as-is, error banner already shows the problem */
+    }
+  }
+
   return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      spellCheck={false}
-      className="h-[480px] w-full rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-    />
+    <div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        spellCheck={false}
+        className={
+          "h-[480px] w-full rounded-md border bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:outline-none " +
+          (parseError
+            ? "border-rose-700 focus:border-rose-500"
+            : "border-slate-800 focus:border-emerald-500")
+        }
+      />
+      <div className="mt-1 flex items-baseline justify-between gap-3 text-[11px]">
+        <span
+          className={
+            parseError ? "truncate text-rose-300" : "text-slate-500"
+          }
+          title={parseError ?? undefined}
+        >
+          {parseError ? `JSON: ${parseError}` : "JSON parses cleanly"}
+        </span>
+        <button
+          type="button"
+          onClick={format}
+          disabled={!!parseError}
+          className="shrink-0 rounded border border-slate-800 px-2 py-0.5 text-slate-400 hover:border-slate-700 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Format
+        </button>
+      </div>
+    </div>
   );
 }
 
