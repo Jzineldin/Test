@@ -459,6 +459,7 @@ function SettingsPanel({
 }) {
   const [me, setMe] = useState<{
     name: string;
+    slug: string;
     notification_webhook_url: string | null;
     forward_inbox_address: string | null;
     email_signature: string | null;
@@ -471,6 +472,7 @@ function SettingsPanel({
       .then((r) => r.json())
       .then((b) => setMe({
         name: b.org_name,
+        slug: b.slug,
         notification_webhook_url: b.notification_webhook_url,
         forward_inbox_address: b.forward_inbox_address,
         email_signature: b.email_signature,
@@ -524,9 +526,25 @@ function SettingsPanel({
           onChange={(v) =>
             setMe({ ...me, forward_inbox_address: v || null })
           }
-          placeholder="triage+yourorg@yourdomain.com"
+          placeholder={`triage+${me.slug}@appetitematch.com`}
         />
       </div>
+      <p className="mt-1 text-xs text-slate-500">
+        Set this to the alias your retail agents will forward ACORDs to.
+        Suggested:{" "}
+        <button
+          type="button"
+          onClick={() =>
+            setMe({
+              ...me,
+              forward_inbox_address: `triage+${me.slug}@appetitematch.com`,
+            })
+          }
+          className="rounded border border-slate-700 px-1.5 py-0.5 font-mono text-[11px] text-slate-300 hover:bg-slate-900"
+        >
+          triage+{me.slug}@appetitematch.com
+        </button>
+      </p>
       <div className="mt-4">
         <label className="block text-xs uppercase tracking-widest text-slate-500">
           Email signature (used on every drafted carrier email)
@@ -1219,7 +1237,7 @@ function WelcomeBanner() {
         Redwood, Great Basin) so the demo flow works zero-click. Take any
         of these next steps when you're ready:
       </p>
-      <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+      <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             n: "1",
@@ -1228,12 +1246,17 @@ function WelcomeBanner() {
           },
           {
             n: "2",
+            title: "Wire your forward inbox",
+            body: "In Settings, set a forward alias (e.g. triage+yourorg@appetitematch.com). Retail agents forward ACORDs there and triage runs automatically.",
+          },
+          {
+            n: "3",
             title: "Add your real carriers",
             body: "Go to Carriers and add the markets you actually quote with. NAICS prefixes, states, lines, revenue band.",
             href: "/app/carriers",
           },
           {
-            n: "3",
+            n: "4",
             title: "Invite your CSRs",
             body: "Add teammates from the Team page so they can run triages under the same org.",
             href: "/app/users",
