@@ -945,8 +945,11 @@ class AppetiteCheckOut(BaseModel):
 
 
 @app.post("/carriers/check", response_model=AppetiteCheckOut)
+@limiter.limit(os.environ.get("RATE_LIMIT_CHECK", "60/minute"))
 def check_appetite(
-    submission: Submission, org: CurrentOrg = Depends(current_org),
+    request: Request,
+    submission: Submission,
+    org: CurrentOrg = Depends(current_org),
 ) -> AppetiteCheckOut:
     """Run only the deterministic prefilter (state, line, NAICS, revenue)
     against the org's carrier directory. No LLM, no persistence, no quota.
@@ -968,7 +971,9 @@ def check_appetite(
 
 
 @app.post("/triage/parse-only", response_model=Submission)
+@limiter.limit(_TRIAGE_RATE)
 async def triage_parse_only(
+    request: Request,
     file: UploadFile = File(...),
     org: CurrentOrg = Depends(current_org),
 ) -> Submission:
