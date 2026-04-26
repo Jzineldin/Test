@@ -368,12 +368,17 @@ function Pricing() {
             <article
               key={p.name}
               className={
-                "flex flex-col rounded-xl border p-6 " +
+                "relative flex flex-col rounded-xl border p-6 " +
                 (p.highlight
                   ? "border-emerald-500 bg-emerald-500/5"
                   : "border-slate-800 bg-slate-950")
               }
             >
+              {p.highlight && (
+                <span className="absolute -top-3 left-6 rounded-full bg-emerald-500 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-950">
+                  Most popular
+                </span>
+              )}
               <p className="text-sm font-medium text-emerald-400">{p.name}</p>
               <p className="mt-3 text-3xl font-semibold text-slate-100 sm:text-4xl">
                 {p.price}
