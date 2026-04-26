@@ -49,6 +49,9 @@ export const RELEASES: Release[] = [
       "**LLM summary callout** - the per-triage one-line summary is now shown above the matches table.",
       "**Real fix: phantom attachments.** Loss runs / dec pages uploaded alongside the ACORD now actually ride along on outbound carrier emails. Previously the cover letter listed them but SES only sent the primary PDF. Inbound email path also stashes all PDFs.",
       "**Rate limits** on /carriers/check (60/min) and /triage/parse-only (30/min, same as /triage).",
+      "**/app/queue** - cross-run draft inbox grouped by status (Drafted | Sent | Replied | Bound | Declined). 'Send all' batch action on the Drafted tab.",
+      "**'What we believe' manifesto** section on the landing page.",
+      "**Auto-scroll to result** on /app after Run triage on mobile viewports.",
     ],
   },
   {
