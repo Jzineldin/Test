@@ -1718,6 +1718,14 @@ function Matches({
 }) {
   return (
     <section className="mb-8">
+      {summary && (
+        <p className="mb-4 rounded-md border border-emerald-700/40 bg-emerald-500/5 p-3 text-sm leading-relaxed text-slate-200">
+          <span className="text-[10px] uppercase tracking-widest text-emerald-300">
+            Summary
+          </span>
+          <span className="ml-2">{summary}</span>
+        </p>
+      )}
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
         Appetite matches ({matches.length})
       </h2>
