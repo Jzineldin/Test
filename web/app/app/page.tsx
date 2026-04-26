@@ -282,11 +282,7 @@ export default function Home() {
   }
 
   if (!authChecked) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-slate-400">
-        Loading…
-      </main>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -1214,6 +1210,35 @@ function WelcomeBanner() {
         ))}
       </ol>
     </section>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <main className="mx-auto max-w-7xl px-6 py-10">
+      <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-6">
+        <div className="space-y-2">
+          <div className="h-7 w-48 animate-pulse rounded bg-slate-800" />
+          <div className="h-3 w-72 animate-pulse rounded bg-slate-900" />
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-7 w-16 animate-pulse rounded bg-slate-900"
+            />
+          ))}
+        </div>
+      </header>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[420px_1fr]">
+        <div className="space-y-3">
+          <div className="h-8 w-40 animate-pulse rounded bg-slate-900" />
+          <div className="h-72 animate-pulse rounded-md bg-slate-900" />
+          <div className="h-9 w-32 animate-pulse rounded bg-slate-800" />
+        </div>
+        <div className="h-[480px] animate-pulse rounded-md border border-dashed border-slate-800 bg-slate-950/50" />
+      </div>
+    </main>
   );
 }
 
