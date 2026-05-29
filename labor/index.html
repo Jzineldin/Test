@@ -210,16 +210,26 @@
   <!-- ================= PREP ================= -->
   <section class="view" id="v-prep">
     <div class="card">
-      <h2 style="font-size:16px;">📤 Send to other phone</h2>
-      <p class="tiny muted">Makes a link with everything you've tracked so far baked in. Send it to
-      the other phone (WhatsApp/Messages) and open it there to load it all. It's a one-time copy —
-      after that each phone tracks on its own, so it's easiest to keep timing on just one.</p>
+      <h2 style="font-size:16px;">📤 Move data to another phone</h2>
+      <p class="tiny muted">Copies everything you've tracked to the other phone. The <b>data code</b>
+      works even between the old (htmlpreview) and new (Pages) web addresses.</p>
       <button class="btn" id="shareData">Create share link</button>
       <div id="shareOut" style="margin-top:8px; display:none;">
         <textarea id="shareLink" readonly rows="3" style="font-size:11px;"></textarea>
         <button class="btn ghost sm" id="copyShare" style="margin-top:6px;">Copy link</button>
-        <div class="tiny muted" style="margin-top:6px;">Tip: if the link is too long for your messaging app, use “Copy link” and paste it.</div>
+        <div class="tiny muted" style="margin-top:6px;">Tip: if the link is too long for your messaging app, use the data code below instead.</div>
       </div>
+
+      <button class="btn ghost" id="showCode" style="margin-top:10px;">Show data code</button>
+      <div id="codeOut" style="margin-top:8px; display:none;">
+        <textarea id="dataCode" readonly rows="3" style="font-size:11px;"></textarea>
+        <button class="btn ghost sm" id="copyCode" style="margin-top:6px;">Copy code</button>
+        <div class="tiny muted" style="margin-top:6px;">Send this text to the other phone, then paste it in the Import box there.</div>
+      </div>
+
+      <label class="fld">Import — paste a data code from the other phone</label>
+      <textarea id="importCode" rows="3" placeholder="Paste the code here…" style="font-size:11px;"></textarea>
+      <button class="btn ghost sm" id="importBtn" style="margin-top:6px;">Import from code</button>
     </div>
 
     <div class="card">
@@ -633,10 +643,15 @@ $$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>{
 }));
 
 /* ---------------- share / move to another phone ---------------- */
-function buildShareLink(){
-  const payload=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
-  return location.href.split('#')[0]+'#d='+payload;
+function encodeState(){ return btoa(unescape(encodeURIComponent(JSON.stringify(S)))); }
+function decodeState(str){ return JSON.parse(decodeURIComponent(escape(atob(str.trim())))); }
+function loadState(data){
+  S=Object.assign(defaultState(),data); S.active=null; save();
+  $('#ruleSel').value=S.rule;
+  renderContacts(); renderBag(); renderAll(); refreshTimer();
 }
+function buildShareLink(){ return location.href.split('#')[0]+'#d='+encodeState(); }
+
 $('#shareData').addEventListener('click',()=>{
   const link=buildShareLink();
   $('#shareLink').value=link; $('#shareOut').style.display='block';
@@ -644,23 +659,30 @@ $('#shareData').addEventListener('click',()=>{
   else { $('#shareLink').select(); copy(link); }
 });
 $('#copyShare').addEventListener('click',()=>{ $('#shareLink').select(); copy($('#shareLink').value); });
+$('#showCode').addEventListener('click',()=>{ $('#dataCode').value=encodeState(); $('#codeOut').style.display='block'; });
+$('#copyCode').addEventListener('click',()=>{ $('#dataCode').select(); copy($('#dataCode').value); });
+$('#importBtn').addEventListener('click',()=>{
+  const v=$('#importCode').value.trim();
+  if(!v){ toast('Paste a code first'); return; }
+  let data; try{ data=decodeState(v); }
+  catch(e){ alert('That code looks incomplete or corrupted. Copy the whole thing and try again.'); return; }
+  const hasLocal=S.contractions && S.contractions.length;
+  if(hasLocal && !confirm('Import this data?\n\nIt will REPLACE the '+S.contractions.length+' contraction(s) on this device.')) return;
+  loadState(data); $('#importCode').value='';
+  toast('Imported '+(S.contractions.length)+' contractions');
+});
 
 /* import shared data when opened from a share link (#d=...) */
 (function importFromHash(){
   const m=location.hash.match(/[#&]d=([^&]+)/);
   if(!m) return;
   try{
-    const data=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    const data=decodeState(m[1]);
     const hasLocal=S.contractions && S.contractions.length;
     const msg=hasLocal
       ? 'Load the shared data from this link?\n\nThis REPLACES the '+S.contractions.length+' contraction(s) currently on this device.'
       : 'Load the shared labor data from this link?';
-    if(confirm(msg)){
-      S=Object.assign(defaultState(),data); S.active=null; save();
-      $('#ruleSel').value=S.rule;
-      renderContacts(); renderBag(); renderAll(); refreshTimer();
-      toast('Shared data loaded');
-    }
+    if(confirm(msg)){ loadState(data); toast('Shared data loaded'); }
   }catch(e){ alert('Sorry — that share link looks incomplete or corrupted.'); }
   history.replaceState(null,'',location.href.split('#')[0]); // avoid re-importing on refresh
 })();
