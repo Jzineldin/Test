@@ -1,0 +1,15 @@
+{
+  "name": "Baby Day — Labor Companion",
+  "short_name": "Baby Day",
+  "description": "Time contractions, know when to head to the hospital, and track baby's first days.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0a1e",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
