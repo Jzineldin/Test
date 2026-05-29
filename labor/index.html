@@ -210,6 +210,19 @@
   <!-- ================= PREP ================= -->
   <section class="view" id="v-prep">
     <div class="card">
+      <h2 style="font-size:16px;">📤 Send to other phone</h2>
+      <p class="tiny muted">Makes a link with everything you've tracked so far baked in. Send it to
+      the other phone (WhatsApp/Messages) and open it there to load it all. It's a one-time copy —
+      after that each phone tracks on its own, so it's easiest to keep timing on just one.</p>
+      <button class="btn" id="shareData">Create share link</button>
+      <div id="shareOut" style="margin-top:8px; display:none;">
+        <textarea id="shareLink" readonly rows="3" style="font-size:11px;"></textarea>
+        <button class="btn ghost sm" id="copyShare" style="margin-top:6px;">Copy link</button>
+        <div class="tiny muted" style="margin-top:6px;">Tip: if the link is too long for your messaging app, use “Copy link” and paste it.</div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2 style="font-size:16px;">📞 Quick contacts</h2>
       <p class="tiny muted">Saved on this phone. Tap a number to call.</p>
       <div id="contactList"></div>
@@ -618,6 +631,39 @@ $$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('.view').forEach(v=>v.classList.toggle('active',v.id==='v-'+t));
   window.scrollTo(0,0);
 }));
+
+/* ---------------- share / move to another phone ---------------- */
+function buildShareLink(){
+  const payload=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  return location.href.split('#')[0]+'#d='+payload;
+}
+$('#shareData').addEventListener('click',()=>{
+  const link=buildShareLink();
+  $('#shareLink').value=link; $('#shareOut').style.display='block';
+  if(navigator.share){ navigator.share({title:'Baby Day — our labor data',url:link}).catch(()=>{}); }
+  else { $('#shareLink').select(); copy(link); }
+});
+$('#copyShare').addEventListener('click',()=>{ $('#shareLink').select(); copy($('#shareLink').value); });
+
+/* import shared data when opened from a share link (#d=...) */
+(function importFromHash(){
+  const m=location.hash.match(/[#&]d=([^&]+)/);
+  if(!m) return;
+  try{
+    const data=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    const hasLocal=S.contractions && S.contractions.length;
+    const msg=hasLocal
+      ? 'Load the shared data from this link?\n\nThis REPLACES the '+S.contractions.length+' contraction(s) currently on this device.'
+      : 'Load the shared labor data from this link?';
+    if(confirm(msg)){
+      S=Object.assign(defaultState(),data); S.active=null; save();
+      $('#ruleSel').value=S.rule;
+      renderContacts(); renderBag(); renderAll(); refreshTimer();
+      toast('Shared data loaded');
+    }
+  }catch(e){ alert('Sorry — that share link looks incomplete or corrupted.'); }
+  history.replaceState(null,'',location.href.split('#')[0]); // avoid re-importing on refresh
+})();
 
 /* ---------------- init ---------------- */
 $('#ruleSel').value=S.rule;
