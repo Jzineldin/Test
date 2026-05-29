@@ -102,6 +102,10 @@
     color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; z-index:50; opacity:0;
     transition:opacity .25s; pointer-events:none;}
   .toast.show{opacity:1;}
+  .modal{position:fixed; inset:0; background:#000b; z-index:60; display:flex; align-items:flex-end; justify-content:center;}
+  .sheet{background:var(--panel); border:1px solid var(--line); border-radius:18px 18px 0 0;
+    padding:18px 18px calc(18px + env(safe-area-inset-bottom)); width:100%; max-width:560px; box-shadow:var(--shadow);}
+  tr.editable{cursor:pointer;} tr.editable td:last-child{text-align:right; opacity:.6;}
 </style>
 </head>
 <body>
@@ -168,10 +172,11 @@
     </div>
     <div class="card">
       <table id="logTable">
-        <thead><tr><th>#</th><th>Start</th><th>Length</th><th>Apart</th><th>Strength</th></tr></thead>
+        <thead><tr><th>#</th><th>Start</th><th>Length</th><th>Apart</th><th>Strength</th><th></th></tr></thead>
         <tbody id="logBody"></tbody>
       </table>
       <div id="logEmpty" class="muted center small" style="padding:20px;">No contractions logged yet.</div>
+      <div id="logHint" class="tiny muted center" style="margin-top:8px; display:none;">Tap any row to edit or delete it.</div>
     </div>
   </section>
 
@@ -209,6 +214,23 @@
 
   <!-- ================= PREP ================= -->
   <section class="view" id="v-prep">
+    <div class="card">
+      <h2 style="font-size:16px;">🔗 Shared account (live sync)</h2>
+      <p class="tiny muted">Type the <b>same code</b> on every phone to share one live log.
+      New contractions and baby entries show up on all devices within a few seconds.</p>
+      <div id="syncOff">
+        <label class="fld">Account code — make one up and use it on both phones</label>
+        <input id="roomInput" placeholder="e.g. baby-smith-2026" autocapitalize="off" autocorrect="off" spellcheck="false"/>
+        <button class="btn" id="joinBtn" style="margin-top:8px;">Start syncing</button>
+      </div>
+      <div id="syncOn" style="display:none;">
+        <div class="small">Syncing as <b id="roomName"></b> <span id="syncDot"></span></div>
+        <div class="tiny muted" id="syncStatus" style="margin-top:4px;"></div>
+        <button class="btn ghost sm" id="leaveBtn" style="margin-top:10px;">Stop syncing on this phone</button>
+      </div>
+      <div class="tiny muted" style="margin-top:8px;">Anyone with the exact code can see this log, so pick something only you two would use. It's just contraction times — no names or personal details.</div>
+    </div>
+
     <div class="card">
       <h2 style="font-size:16px;">📤 Move data to another phone</h2>
       <p class="tiny muted">Copies everything you've tracked to the other phone. The <b>data code</b>
@@ -337,6 +359,28 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal" id="editModal" style="display:none;">
+  <div class="sheet">
+    <h3 style="font-size:16px;">Edit contraction</h3>
+    <label class="fld">Start time</label>
+    <input id="eStart" type="time" step="1"/>
+    <label class="fld">Length (mm:ss, e.g. 0:45)</label>
+    <input id="eLen" placeholder="0:45" inputmode="text"/>
+    <label class="fld">Strength</label>
+    <div class="seg" id="eIntensity">
+      <button data-i="">None</button>
+      <button data-i="mild">Mild</button>
+      <button data-i="moderate">Moderate</button>
+      <button data-i="strong">Strong</button>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn grow" id="eSave">Save changes</button>
+      <button class="btn ghost" id="eCancel">Cancel</button>
+    </div>
+    <button class="btn danger" id="eDelete" style="width:100%; margin-top:10px;">🗑 Delete this contraction</button>
+  </div>
+</div>
+
 <script>
 /* ---------------- storage ---------------- */
 const KEY='babyday.v1';
@@ -357,6 +401,13 @@ const defaultState=()=>({
 let S=load();
 function load(){ try{const r=JSON.parse(localStorage.getItem(KEY)); return r?Object.assign(defaultState(),r):defaultState();}catch(e){return defaultState();} }
 function save(){ localStorage.setItem(KEY,JSON.stringify(S)); }
+
+/* ---------------- live sync (shared account) ---------------- */
+const SB_URL='https://elckbdelvebbqohxflbm.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsY2tiZGVsdmViYnFvaHhmbGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NzI0MzUsImV4cCI6MjA3NDE0ODQzNX0.fmqft6s1QBmXZmVSjIPyh9gCEswLa4uraJ552U9yq9k';
+let ROOM=localStorage.getItem('babyday.room')||'';   // shared account code; kept separate so import/reset won't wipe it
+let pollT=null, syncOk=false;
+function sbHeaders(extra){ return Object.assign({apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'}, extra||{}); }
 
 const DEFAULT_BAG={
   mom:['ID, insurance card & birth plan','Phone + long charger','Comfy going-home outfit (loose)',
@@ -441,9 +492,11 @@ let tick;
 function startContraction(){ S.active=now(); save(); refreshTimer(); startTick(); }
 function stopContraction(){
   if(!S.active) return;
-  S.contractions.push({start:S.active, end:now(), intensity:null});
+  const c={start:S.active, end:now(), intensity:null};
+  S.contractions.push(c);
   S.active=null; save(); stopTick(); refreshTimer(); renderAll();
   toast('Contraction logged');
+  if(ROOM) sbUpsertContraction(c);
 }
 function startTick(){ stopTick(); tick=setInterval(refreshTimer,250); }
 function stopTick(){ if(tick) clearInterval(tick); tick=null; }
@@ -485,11 +538,13 @@ function renderLog(){
   $('#logEmpty').style.display=all.length?'none':'block';
   const tag=i=>({mild:'<span class="tagi i-mild">Mild</span>',moderate:'<span class="tagi i-mod">Moderate</span>',
     strong:'<span class="tagi i-strong">Strong</span>'}[i]||'<span class="muted tiny">—</span>');
+  $('#logHint').style.display=all.length?'block':'none';
   all.slice().reverse().forEach((c,idx)=>{
     const n=all.length-idx;
-    const tr=document.createElement('tr');
+    const tr=document.createElement('tr'); tr.className='editable';
     tr.innerHTML=`<td>${n}</td><td>${fmtClock(c.start)}</td><td>${fmtDur(c.dur)}</td>
-      <td>${c.interval?fmtMin(c.interval):'–'}</td><td>${tag(c.intensity)}</td>`;
+      <td>${c.interval?fmtMin(c.interval):'–'}</td><td>${tag(c.intensity)}</td><td>✏️</td>`;
+    tr.addEventListener('click',()=>openEdit(c.start));
     body.appendChild(tr);
   });
   // bar chart (last 30 durations)
@@ -575,7 +630,7 @@ function renderKicks(){
 /* ---------------- baby tracker ---------------- */
 let feedSel='Left breast';
 function todayBaby(){ const d=new Date(); d.setHours(0,0,0,0); return S.baby.filter(b=>b.t>=d.getTime()); }
-function logBabyEntry(kind,detail){ S.baby.push({t:now(),kind,detail}); save(); renderBaby(); toast(detail+' logged'); }
+function logBabyEntry(kind,detail){ const e={t:now(),kind,detail}; S.baby.push(e); save(); renderBaby(); toast(detail+' logged'); if(ROOM) sbUpsertBaby(e); }
 function renderBaby(){
   const t=todayBaby();
   const feeds=t.filter(b=>b.kind==='feed');
@@ -586,9 +641,14 @@ function renderBaby(){
   $('#bSinceFeed').textContent=lastFeed?`Last feed ${fmtDur(now()-lastFeed.t)} ago (${fmtClock(lastFeed.t)})`:'No feeds logged today.';
   const w=$('#babyLog'); w.innerHTML='';
   S.baby.slice(-25).reverse().forEach(b=>{
-    const div=document.createElement('div'); div.className='check';
+    const div=document.createElement('div'); div.className='check'; div.style.cursor='pointer';
     const icon=b.kind==='feed'?'🍼':'🧷';
-    div.innerHTML=`<span style="font-size:18px">${icon}</span><span class="grow">${b.detail}</span><span class="muted tiny">${fmtClock(b.t)}</span>`;
+    div.innerHTML=`<span style="font-size:18px">${icon}</span><span class="grow">${b.detail}</span><span class="muted tiny">${fmtClock(b.t)} ✕</span>`;
+    div.addEventListener('click',async ()=>{
+      if(!confirm('Delete this entry?')) return;
+      S.baby=S.baby.filter(x=>x.t!==b.t); save(); renderBaby();
+      if(ROOM) await sbDeleteOne('labor_baby','t_ms',b.t);
+    });
     w.appendChild(div);
   });
   if(!S.baby.length) w.innerHTML='<div class="muted small center" style="padding:14px;">Nothing logged yet.</div>';
@@ -611,10 +671,15 @@ function renderAll(){ renderStatus(); refreshLast(); renderLog(); renderKicks();
 $('#bigBtn').addEventListener('click',()=>{ S.active?stopContraction():startContraction(); navigator.vibrate?.(30); });
 $$('#lastIntensity button').forEach(b=>b.addEventListener('click',()=>{
   const all=S.contractions.filter(x=>x.end); if(!all.length) return;
-  all[all.length-1].intensity=b.dataset.i; save(); refreshLast(); renderLog(); }));
+  const c=all[all.length-1]; c.intensity=b.dataset.i; save(); refreshLast(); renderLog();
+  if(ROOM) sbUpsertContraction(c); }));
 $('#copyLog').addEventListener('click',()=>copy(logText()));
-$('#resetLog').addEventListener('click',()=>{ if(confirm('Clear all contractions? This starts a fresh session.')){
-  S.contractions=[]; S.active=null; save(); stopTick(); refreshTimer(); renderAll(); }});
+$('#resetLog').addEventListener('click',async ()=>{
+  const msg=ROOM?('Clear all contractions for EVERYONE on code "'+ROOM+'"? This can\'t be undone.')
+                :'Clear all contractions? This starts a fresh session.';
+  if(!confirm(msg)) return;
+  S.contractions=[]; S.active=null; save(); stopTick(); refreshTimer(); renderAll();
+  if(ROOM) await sbDelete('labor_contractions'); });
 $('#ruleSel').addEventListener('change',e=>{ S.rule=e.target.value; save(); renderStatus(); renderAll(); });
 $('#addContact').addEventListener('click',()=>{ const n=$('#cName').value.trim(), t=$('#cNum').value.trim();
   if(!n) return; S.contacts.push({n,t}); $('#cName').value='';$('#cNum').value=''; save(); renderContacts(); });
@@ -631,7 +696,11 @@ $('#logFeed').addEventListener('click',()=>logBabyEntry('feed',feedSel));
 $('#logWet').addEventListener('click',()=>logBabyEntry('diaper','Wet 💧'));
 $('#logDirty').addEventListener('click',()=>logBabyEntry('diaper','Dirty 💩'));
 $('#logBoth').addEventListener('click',()=>logBabyEntry('diaper','Both 💧💩'));
-$('#resetBaby').addEventListener('click',()=>{ if(confirm('Clear baby log?')){ S.baby=[]; save(); renderBaby(); }});
+$('#resetBaby').addEventListener('click',async ()=>{
+  const msg=ROOM?('Clear the baby log for EVERYONE on code "'+ROOM+'"?'):'Clear baby log?';
+  if(!confirm(msg)) return;
+  S.baby=[]; save(); renderBaby();
+  if(ROOM) await sbDelete('labor_baby'); });
 $('#copyBaby').addEventListener('click',()=>copy(babyText()));
 
 /* tabs */
@@ -687,9 +756,128 @@ $('#importBtn').addEventListener('click',()=>{
   history.replaceState(null,'',location.href.split('#')[0]); // avoid re-importing on refresh
 })();
 
+/* ---------------- live sync engine ---------------- */
+async function sbUpsert(table, rows){
+  if(!ROOM || !rows.length) return;
+  try{ await fetch(SB_URL+'/rest/v1/'+table,{method:'POST',
+    headers:sbHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify(rows)}); }catch(e){ syncOk=false; renderSync(); }
+}
+function sbUpsertContraction(c){ return sbUpsert('labor_contractions',[{room:ROOM,start_ms:c.start,end_ms:c.end,intensity:c.intensity}]); }
+function sbUpsertBaby(b){ return sbUpsert('labor_baby',[{room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail}]); }
+async function sbDelete(table){
+  if(!ROOM) return;
+  try{ await fetch(SB_URL+'/rest/v1/'+table+'?room=eq.'+encodeURIComponent(ROOM),
+    {method:'DELETE',headers:sbHeaders({Prefer:'return=minimal'})}); }catch(e){}
+}
+async function sbDeleteOne(table,col,val){
+  if(!ROOM) return;
+  try{ await fetch(SB_URL+'/rest/v1/'+table+'?room=eq.'+encodeURIComponent(ROOM)+'&'+col+'=eq.'+val,
+    {method:'DELETE',headers:sbHeaders({Prefer:'return=minimal'})}); }catch(e){}
+}
+function mergeContractions(rows){
+  const by={}; S.contractions.forEach(c=>{ if(c.end!=null) by[c.start]=c; });
+  const remote={}; rows.forEach(r=>{ by[r.start_ms]={start:r.start_ms,end:r.end_ms,intensity:r.intensity}; remote[r.start_ms]=1; });
+  Object.values(by).forEach(c=>{ if(!remote[c.start]) sbUpsertContraction(c); });   // push local-only up
+  S.contractions=Object.values(by).sort((a,b)=>a.start-b.start);
+}
+function mergeBaby(rows){
+  const by={}; S.baby.forEach(b=>{ by[b.t]=b; });
+  const remote={}; rows.forEach(r=>{ by[r.t_ms]={t:r.t_ms,kind:r.kind,detail:r.detail}; remote[r.t_ms]=1; });
+  Object.values(by).forEach(b=>{ if(!remote[b.t]) sbUpsertBaby(b); });
+  S.baby=Object.values(by).sort((a,b)=>a.t-b.t);
+}
+async function sbPull(){
+  if(!ROOM) return;
+  try{
+    const q=p=>SB_URL+'/rest/v1/'+p+'&room=eq.'+encodeURIComponent(ROOM);
+    const [cr,br]=await Promise.all([
+      fetch(q('labor_contractions?select=start_ms,end_ms,intensity&order=start_ms'),{headers:sbHeaders()}),
+      fetch(q('labor_baby?select=t_ms,kind,detail&order=t_ms'),{headers:sbHeaders()})
+    ]);
+    if(!cr.ok || !br.ok) throw new Error('http '+cr.status+'/'+br.status);
+    mergeContractions(await cr.json()); mergeBaby(await br.json());
+    save(); renderAll();
+    syncOk=true; renderSync();
+  }catch(e){ syncOk=false; renderSync(); }
+}
+function startPoll(){ stopPoll(); sbPull(); pollT=setInterval(sbPull,5000); }
+function stopPoll(){ if(pollT) clearInterval(pollT); pollT=null; }
+async function joinRoom(code){
+  code=(code||'').trim();
+  if(!code){ toast('Type a code first'); return; }
+  ROOM=code; localStorage.setItem('babyday.room',ROOM);
+  syncOk=false; renderSync();
+  const cs=S.contractions.filter(c=>c.end!=null).map(c=>({room:ROOM,start_ms:c.start,end_ms:c.end,intensity:c.intensity}));
+  const bs=S.baby.map(b=>({room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail}));
+  await sbUpsert('labor_contractions',cs); await sbUpsert('labor_baby',bs);   // upload what's already here
+  await sbPull(); startPoll();
+  toast('Syncing as "'+ROOM+'"');
+}
+function leaveRoom(){ stopPoll(); ROOM=''; localStorage.removeItem('babyday.room'); syncOk=false; renderSync();
+  toast('Stopped syncing (your data stays on this phone)'); }
+function renderSync(){
+  const on=!!ROOM;
+  $('#syncOff').style.display=on?'none':'block';
+  $('#syncOn').style.display=on?'block':'none';
+  if(on){
+    $('#roomName').textContent=ROOM;
+    $('#syncDot').textContent=syncOk?'🟢':'🟡';
+    $('#syncStatus').textContent=syncOk
+      ? 'Connected · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})
+      : 'Connecting…';
+  }
+}
+$('#joinBtn').addEventListener('click',()=>joinRoom($('#roomInput').value));
+$('#leaveBtn').addEventListener('click',leaveRoom);
+
+/* ---------------- edit / delete a contraction ---------------- */
+let editStart=null;
+function openEdit(startVal){
+  const c=S.contractions.find(x=>x.start===startVal && x.end!=null);
+  if(!c) return;
+  editStart=startVal;
+  const d=new Date(c.start);
+  $('#eStart').value=[d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const sec=Math.max(0,Math.round((c.end-c.start)/1000));
+  $('#eLen').value=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  $$('#eIntensity button').forEach(b=>b.classList.toggle('on',(b.dataset.i||'')===(c.intensity||'')));
+  $('#editModal').style.display='flex';
+}
+function closeEdit(){ $('#editModal').style.display='none'; editStart=null; }
+$$('#eIntensity button').forEach(b=>b.addEventListener('click',()=>{
+  $$('#eIntensity button').forEach(x=>x.classList.toggle('on',x===b)); }));
+$('#eCancel').addEventListener('click',closeEdit);
+$('#editModal').addEventListener('click',e=>{ if(e.target.id==='editModal') closeEdit(); });
+$('#eDelete').addEventListener('click',async ()=>{
+  if(editStart==null) return;
+  if(!confirm('Delete this contraction? This removes it'+(ROOM?' for everyone on the code.':'.'))) return;
+  const old=editStart;
+  S.contractions=S.contractions.filter(x=>x.start!==old);
+  save(); renderAll(); closeEdit();
+  if(ROOM) await sbDeleteOne('labor_contractions','start_ms',old);
+});
+$('#eSave').addEventListener('click',async ()=>{
+  const c=S.contractions.find(x=>x.start===editStart && x.end!=null);
+  if(!c){ closeEdit(); return; }
+  const old=c.start, origDur=c.end-c.start;
+  let newStart=c.start;
+  const tp=($('#eStart').value||'').split(':').map(Number);
+  if(tp.length>=2 && !tp.slice(0,2).some(isNaN)){ const d=new Date(c.start); d.setHours(tp[0],tp[1],tp[2]||0,0); newStart=d.getTime(); }
+  let dur=origDur;
+  const lv=($('#eLen').value||'').trim(), lp=lv.split(':').map(Number);
+  if(lp.length===2 && !lp.some(isNaN)) dur=(lp[0]*60+lp[1])*1000;
+  else if(lp.length===1 && lv!=='' && !isNaN(lp[0])) dur=lp[0]*1000;
+  c.start=newStart; c.end=newStart+Math.max(0,dur);
+  const sel=$('#eIntensity button.on'); c.intensity=(sel && sel.dataset.i) ? sel.dataset.i : null;
+  save(); renderAll(); closeEdit();
+  if(ROOM){ if(newStart!==old) await sbDeleteOne('labor_contractions','start_ms',old); sbUpsertContraction(c); }
+});
+
 /* ---------------- init ---------------- */
 $('#ruleSel').value=S.rule;
-renderContacts(); renderBag(); renderAll(); refreshTimer();
+renderContacts(); renderBag(); renderAll(); refreshTimer(); renderSync();
+if(ROOM) startPoll();
 if(S.active) startTick();
 // keep "since last" / live clock ticking
 setInterval(()=>{ if(document.querySelector('#v-timer.active')) refreshTimer(); },1000);
