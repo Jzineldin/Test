@@ -118,6 +118,12 @@
   details[open] summary::before{content:'－ ';}
   details p{font-size:13px; color:var(--muted); line-height:1.6; margin:8px 0 4px;}
   .big2{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .chart{display:flex; align-items:flex-end; gap:4px; height:130px; margin:12px 0 4px;}
+  .chart .col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;}
+  .chart .bar{width:100%; background:var(--accent2); border-radius:4px 4px 0 0; min-height:4px;}
+  .chart .col.today .bar{background:var(--pink);}
+  .chart .v{font-size:9px; color:var(--muted); margin-bottom:2px; font-variant-numeric:tabular-nums;}
+  .chart .d{font-size:9px; color:var(--muted); margin-top:3px;}
 </style>
 </head>
 <body>
@@ -337,6 +343,13 @@
         </div>
         <div class="hint" id="nbFeedHint"></div>
       </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600; font-size:14px;">🔔 Feed reminders</div><div class="tiny muted" id="remindStatus">Off</div></div>
+          <button class="btn sm" id="remindToggle">Turn on</button>
+        </div>
+        <div class="hint">Newborns eat <b>~8–12×/24h, about every 2–3 hours</b>. In the early days <b>wake him to feed if it's been ~3–4h</b> (and ~2–3h if breastfeeding), until his birth weight is back and the doctor says he can sleep longer. Always feed sooner on hunger cues (rooting, hands to mouth, smacking).</div>
+      </div>
       <div class="row wrap" style="margin:12px 0;">
         <div class="stat"><div class="num" id="nbFeeds">0</div><div class="lab">Feeds today</div></div>
         <div class="stat"><div class="num" id="nbMl">0</div><div class="lab">Formula ml</div></div>
@@ -464,8 +477,15 @@
           <div class="grow"><label class="fld">Feed every (hrs)</label><input id="planEvery" inputmode="numeric"/></div>
         </div>
         <button class="btn sm" id="savePlan" style="margin-top:10px;">Save plan</button>
-        <div id="planTable" style="margin-top:12px;"></div>
+        <div class="tiny muted" style="margin-top:12px;">ml per måltid (per missad amning), by day of life — today highlighted:</div>
+        <div id="planChart" class="chart"></div>
+        <div id="planTable" style="margin-top:6px;"></div>
         <div class="disc">This only calculates the plan your doctor gave you — it isn't medical advice. If baby seems unwell, won't feed, has very few wet diapers, or you're worried, contact your pediatrician.</div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">How it compares to a typical newborn</h3>
+        <p class="tiny muted">General guides say <b>per feed</b>: day 1 ~5–15 ml · day 3 ~20–30 ml · end of week 1 ~45–60 ml · week 2 ~60 ml · ~1 month ~90–120 ml. Babies take roughly <b>150 ml/kg/day</b> total over 8–12 feeds.</p>
+        <p class="tiny muted">Your doctor's plan hits 120 ml/feed by ~day 11 — a bit faster than these averages, which can be exactly right for Malek's supplementation/weight gain. Worth a quick confirm with the doctor that it's truly <b>+10 ml per måltid each day, cap 120</b>. The doctor's number always beats any chart.</p>
       </div>
       <div class="card">
         <h3 style="font-size:14px;">Is this normal? — newborn quick answers</h3>
@@ -850,12 +870,22 @@ function renderWeights(){
   $('#weightOut').innerHTML=`<div class="small">Latest <b>${last} g</b> · ${pct>=0?'+':''}${pct.toFixed(1)}% from birth (${birthW} g)</div>
     <table style="margin-top:8px;"><thead><tr><th>Age</th><th>Weight</th><th>vs birth</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+function planSeries(){
+  const p=S.feedPlan, arr=[]; let d=1;
+  while(d<=30){ const ml=Math.min(p.capMl, p.startMl+(d-1)*p.stepMl); arr.push({d,ml});
+    if(ml>=p.capMl){ arr.push({d:d+1, ml:p.capMl, plus:true}); break; } d++; }
+  return arr;
+}
 function renderPlanTable(){
-  const p=S.feedPlan; let rows='', dol=dayOfLife();
-  for(let d=1; d<=14; d++){ const ml=Math.min(p.capMl,p.startMl+(d-1)*p.stepMl);
-    rows+=`<tr${dol===d?' style="color:var(--accent);font-weight:700;"':''}><td>Day ${d}</td><td>${ml} ml</td></tr>`;
-    if(ml>=p.capMl){ rows+=`<tr><td>Day ${d+1}+</td><td>${p.capMl} ml</td></tr>`; break; } }
-  $('#planTable').innerHTML=`<table><thead><tr><th>Day of life</th><th>Per missed feed</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const s=planSeries(), dol=dayOfLife();
+  const rows=s.map(x=>`<tr${dol===x.d?' style="color:var(--accent);font-weight:700;"':''}><td>Day ${x.d}${x.plus?'+':''}</td><td>${x.ml} ml</td></tr>`).join('');
+  $('#planTable').innerHTML=`<table><thead><tr><th>Day of life</th><th>Per måltid</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderPlanChart(){
+  const s=planSeries(), max=Math.max(...s.map(x=>x.ml)), dol=dayOfLife();
+  $('#planChart').innerHTML=s.map(x=>`<div class="col${x.d===dol?' today':''}">`+
+    `<div class="v">${x.ml}</div><div class="bar" style="height:${Math.max(4,x.ml/max*100)}%"></div>`+
+    `<div class="d">${x.plus?('d'+x.d+'+'):('d'+x.d)}</div></div>`).join('');
 }
 const FAQ=[
   {q:'Hiccups — okay?', a:'Yes, very common and harmless. Often after feeds from a bit of swallowed air. They stop on their own; a burp or letting him suck can help.'},
@@ -893,7 +923,7 @@ function renderNewborn(){
   renderEventList($('#babyLog'), S.baby.slice(-25), 'Nothing logged yet.');
   renderEventList($('#feedRecent'), todayEvents('feed'), 'No feeds yet today.');
   renderEventList($('#diaRecent'), todayEvents('diaper'), 'No diapers yet today.');
-  renderMilkTrend(); renderWeights(); renderPlanTable();
+  renderMilkTrend(); renderWeights(); renderPlanTable(); renderPlanChart(); renderRemind();
   $('#formulaHint').textContent = S.birth
     ? 'Today (day '+dayOfLife()+'): give '+recMl()+' ml per missed breastfeed.'
     : 'Set the birth date in Info to auto-calculate.';
@@ -907,6 +937,38 @@ function babyText(){
   s+=`Feeds: ${feeds.length} (formula ${ml} ml) · Wet: ${t.filter(isPee).length} · Dirty: ${t.filter(isPoop).length}\n\n`;
   t.forEach(b=>{ s+=`${fmtClock(b.t)}  ${evIcon(b)} ${b.detail}\n`; });
   return s;
+}
+
+/* ---------------- feed reminders (per device) ---------------- */
+let remindOn=localStorage.getItem('babyday.remind')==='1';
+let lastNotifiedDue=0;
+function notify(title,body){
+  try{ if('Notification' in window && Notification.permission==='granted'){ new Notification(title,{body,icon:'icon-192.png'}); return; } }catch(e){}
+  toast(title+' — '+body);
+}
+function renderRemind(){
+  const el=$('#remindStatus'), btn=$('#remindToggle'); if(!el) return;
+  if(remindOn){
+    const perm=('Notification' in window)?Notification.permission:'unsupported';
+    el.textContent = perm==='granted' ? "On · you'll get a ping when a feed is due"
+      : perm==='denied' ? 'On, but your browser is blocking notifications — you\'ll still get an in-app alert'
+      : 'On · please allow notifications when asked';
+    btn.textContent='Turn off'; btn.className='btn ghost sm';
+  } else { el.textContent='Off'; btn.textContent='Turn on'; btn.className='btn sm'; }
+}
+async function toggleRemind(){
+  remindOn=!remindOn; localStorage.setItem('babyday.remind', remindOn?'1':'0');
+  if(remindOn && 'Notification' in window && Notification.permission==='default'){ try{ await Notification.requestPermission(); }catch(e){} }
+  renderRemind(); if(remindOn) toast('Feed reminders on');
+}
+function checkFeedReminder(){
+  if(!remindOn) return; const lf=lastOf('feed'); if(!lf) return;
+  const due=lf.t+(S.feedPlan.intervalMin||180)*60000;
+  if(now()>=due && lastNotifiedDue<due){
+    lastNotifiedDue=due;
+    notify('Feeding time 🍼', (S.babyName||'Baby')+' is due for a feed'+(S.birth?(' (~'+recMl()+' ml if topping up)'):'')+'.');
+    navigator.vibrate?.([200,100,200]);
+  }
 }
 
 /* ---------------- copy helper ---------------- */
@@ -992,6 +1054,7 @@ $('#resetBaby').addEventListener('click',async ()=>{
   S.baby=[]; save(); renderNewborn();
   if(ROOM) await sbDelete('labor_baby'); });
 $('#copyBaby').addEventListener('click',()=>copy(babyText()));
+$('#remindToggle').addEventListener('click',toggleRemind);
 
 /* tabs */
 $$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>{
@@ -1199,7 +1262,9 @@ setInterval(()=>{
   if(document.querySelector('#v-baby.active') && document.getElementById('nb-now').style.display!=='none'){
     renderNextFeed(); const a=fmtAge(); $('#nbAge').textContent=a.big; $('#nbAgeSub').textContent=a.sub;
   }
+  checkFeedReminder();
 },1000);
+renderRemind();
 
 /* service worker for offline */
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
