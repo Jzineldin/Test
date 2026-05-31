@@ -27,8 +27,13 @@ hospital**, and track baby's first days. Built for a first baby, no internet req
   Plus a list of red-flag symptoms that mean *call now regardless of the timer*.
 - **🎒 Prep** — quick-dial contacts (tap to call), a checkable hospital-bag list (mom / partner / baby),
   a guided **breathing pacer**, and a **kick counter**.
-- **👶 Baby** — after arrival: log feeds (L/R breast, bottle), diapers (wet/dirty), and see daily totals
-  and time-since-last-feed. Copy for the pediatrician.
+- **👶 Newborn** — after arrival, a full newborn hub:
+  - **Now** dashboard: baby's age/day-of-life, next-feed countdown, today's totals, and day-by-day wet/dirty expectations.
+  - **Feed**: one-tap breastfeed (L/R/both) or formula, with the **doctor's formula plan auto-calculated** per day (e.g. 20 ml day 1, +10/day, cap 120) and pre-filled.
+  - **Diaper**: wet/dirty with poop colour + consistency.
+  - **Growth**: daily breastfeeding-supply trend + weight tracking (% change from birth).
+  - **Info**: baby name/birth time, an editable formula plan, and a "Is this normal?" newborn FAQ with red-flag warnings.
+  - Everything one-tap, autosaved, editable/deletable, and **synced live** across phones (including baby name, birth time, and feeding plan).
 
 ## ⚠️ Important
 

@@ -106,6 +106,18 @@
   .sheet{background:var(--panel); border:1px solid var(--line); border-radius:18px 18px 0 0;
     padding:18px 18px calc(18px + env(safe-area-inset-bottom)); width:100%; max-width:560px; box-shadow:var(--shadow);}
   tr.editable{cursor:pointer;} tr.editable td:last-child{text-align:right; opacity:.6;}
+  .seg.wrap{flex-wrap:wrap;} .seg.wrap button{flex:1 1 40%;}
+  .subnav{display:flex; gap:6px; position:sticky; top:0; z-index:10; background:var(--bg); padding:6px 0; margin-bottom:6px;}
+  .subnav button{flex:1; background:var(--panel2); color:var(--muted); border:1px solid var(--line);
+    border-radius:10px; padding:8px 2px; font-size:12px;}
+  .subnav button.on{background:var(--accent2); color:#fff; border-color:var(--accent2);}
+  details{border-bottom:1px solid var(--line); padding:8px 0;}
+  details summary{cursor:pointer; font-size:14px; font-weight:600; list-style:none;}
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{content:'＋ '; color:var(--accent);}
+  details[open] summary::before{content:'－ ';}
+  details p{font-size:13px; color:var(--muted); line-height:1.6; margin:8px 0 4px;}
+  .big2{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
 </style>
 </head>
 <body>
@@ -301,49 +313,164 @@
     </div>
   </section>
 
-  <!-- ================= BABY ================= -->
+  <!-- ================= NEWBORN ================= -->
   <section class="view" id="v-baby">
-    <div class="card small muted">After baby arrives 💜 Track feeds, diapers and sleep — your
-    pediatrician will ask about these in the first days, and it helps you spot a feeding rhythm.</div>
-
-    <div class="card">
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="font-size:16px;">Today's totals</h2>
-        <button class="btn ghost sm" id="copyBaby">Copy</button>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <div class="stat"><div class="num" id="bFeeds">0</div><div class="lab">Feeds</div></div>
-        <div class="stat"><div class="num" id="bWet">0</div><div class="lab">Wet 💧</div></div>
-        <div class="stat"><div class="num" id="bDirty">0</div><div class="lab">Dirty 💩</div></div>
-      </div>
-      <div class="hint" id="bSinceFeed"></div>
+    <div class="subnav" id="nbNav">
+      <button class="on" data-nb="now">Now</button>
+      <button data-nb="feed">🍼 Feed</button>
+      <button data-nb="diaper">🧷 Diaper</button>
+      <button data-nb="growth">📈 Growth</button>
+      <button data-nb="info">ⓘ Info</button>
     </div>
 
-    <div class="card">
-      <h3 style="font-size:14px;">Log a feed</h3>
-      <div class="seg" id="feedType">
-        <button class="on" data-f="Left breast">Left</button>
-        <button data-f="Right breast">Right</button>
-        <button data-f="Bottle">Bottle</button>
+    <!-- NOW -->
+    <div class="nbview" id="nb-now">
+      <div class="card center">
+        <div style="font-size:15px; font-weight:600;" id="nbName">Baby</div>
+        <div class="clock" id="nbAge">—</div>
+        <div class="muted small" id="nbAgeSub"></div>
       </div>
-      <button class="btn" id="logFeed">Log feed now</button>
-    </div>
-
-    <div class="card">
-      <h3 style="font-size:14px;">Log a diaper</h3>
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:flex-start;">
+          <div><div class="muted tiny">NEXT FEED</div><div class="big2" id="nbNextFeed">—</div></div>
+          <div style="text-align:right;"><div class="muted tiny">PER MISSED FEED TODAY</div><div class="big2" id="nbRecMl">— ml</div></div>
+        </div>
+        <div class="hint" id="nbFeedHint"></div>
+      </div>
+      <div class="row wrap" style="margin:12px 0;">
+        <div class="stat"><div class="num" id="nbFeeds">0</div><div class="lab">Feeds today</div></div>
+        <div class="stat"><div class="num" id="nbMl">0</div><div class="lab">Formula ml</div></div>
+        <div class="stat"><div class="num" id="nbWet">0</div><div class="lab">Wet 💧</div></div>
+        <div class="stat"><div class="num" id="nbDirty">0</div><div class="lab">Dirty 💩</div></div>
+      </div>
+      <div class="card" id="nbExpect" style="display:none;"></div>
       <div class="row">
-        <button class="btn grow" id="logWet">💧 Wet</button>
-        <button class="btn grow" id="logDirty">💩 Dirty</button>
-        <button class="btn grow ghost" id="logBoth">Both</button>
+        <button class="btn grow" id="nbGoFeed">🍼 Log a feed</button>
+        <button class="btn grow ghost" id="nbGoDiaper">🧷 Log a diaper</button>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <h3 style="font-size:14px;">Recent</h3>
+          <div class="row">
+            <button class="btn ghost sm" id="copyBaby">Copy</button>
+            <button class="btn ghost sm" id="resetBaby">Clear</button>
+          </div>
+        </div>
+        <div id="babyLog" class="small"></div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <h3 style="font-size:14px;">Recent</h3>
-        <button class="btn ghost sm" id="resetBaby">Clear</button>
+    <!-- FEED -->
+    <div class="nbview" id="nb-feed" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:14px;">🤱 Breast</h3>
+        <div class="seg" id="feedSide">
+          <button class="on" data-side="left">Left</button>
+          <button data-side="right">Right</button>
+          <button data-side="both">Both</button>
+        </div>
+        <label class="fld">Minutes (optional)</label>
+        <input id="feedMin" inputmode="numeric" placeholder="e.g. 15"/>
+        <button class="btn" id="logBreast" style="margin-top:10px;">Log breastfeed</button>
       </div>
-      <div id="babyLog" class="small"></div>
+      <div class="card">
+        <h3 style="font-size:14px;">🍼 Formula</h3>
+        <label class="fld">Amount (ml) — today's plan is filled in for you</label>
+        <input id="feedMl" inputmode="numeric"/>
+        <button class="btn" id="logFormula" style="margin-top:10px;">Log formula</button>
+        <div class="hint" id="formulaHint"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">Today's feeds</h3>
+        <div id="feedRecent" class="small"></div>
+      </div>
+    </div>
+
+    <!-- DIAPER -->
+    <div class="nbview" id="nb-diaper" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:14px;">What was in it?</h3>
+        <div class="seg" id="diaWhat">
+          <button class="on" data-d="wet">💧 Wet</button>
+          <button data-d="dirty">💩 Dirty</button>
+          <button data-d="both">Both</button>
+        </div>
+        <div id="poopDetail" style="display:none;">
+          <label class="fld">Poop colour</label>
+          <div class="seg wrap" id="poopColor">
+            <button class="on" data-c="black">Black (meconium)</button>
+            <button data-c="green">Dark green</button>
+            <button data-c="brown">Brown</button>
+            <button data-c="yellow">Yellow / seedy</button>
+          </div>
+          <label class="fld">Consistency</label>
+          <div class="seg wrap" id="poopCons">
+            <button class="on" data-k="sticky">Sticky / tarry</button>
+            <button data-k="seedy">Seedy</button>
+            <button data-k="loose">Loose / runny</button>
+            <button data-k="firm">Firm</button>
+          </div>
+        </div>
+        <button class="btn" id="logDiaper" style="margin-top:12px;">Log diaper</button>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">Today's diapers</h3>
+        <div id="diaRecent" class="small"></div>
+      </div>
+    </div>
+
+    <!-- GROWTH -->
+    <div class="nbview" id="nb-growth" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:14px;">How's breastfeeding going today?</h3>
+        <p class="tiny muted">One quick tap a day so you can see the trend as your supply builds.</p>
+        <div class="seg" id="milkRate">
+          <button data-r="1">😣</button><button data-r="2">😕</button>
+          <button data-r="3">🙂</button><button data-r="4">😀</button><button data-r="5">🤱</button>
+        </div>
+        <div class="tiny muted center" style="margin-top:-2px;">Hard ←→ Flowing</div>
+        <div id="milkTrend" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">Weight</h3>
+        <p class="tiny muted">Newborns often drop up to ~7–10% the first days, then regain by ~2 weeks. Log what the scale says.</p>
+        <div class="row">
+          <input id="wInput" inputmode="numeric" placeholder="grams (e.g. 3200)" class="grow"/>
+          <button class="btn" id="logWeight">Add</button>
+        </div>
+        <div id="weightOut" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="nbview" id="nb-info" style="display:none;">
+      <div class="card">
+        <h3 style="font-size:14px;">Baby details</h3>
+        <label class="fld">Name</label>
+        <input id="setName" placeholder="Baby's name"/>
+        <label class="fld">Date &amp; time of birth</label>
+        <input id="setBirth" type="datetime-local"/>
+        <button class="btn sm" id="saveBaby" style="margin-top:10px;">Save</button>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">Formula plan (from your doctor)</h3>
+        <p class="tiny muted">Set these to exactly what your doctor told you — the app uses them to show how much to give per missed breastfeed each day.</p>
+        <div class="row wrap">
+          <div class="grow"><label class="fld">Start (ml)</label><input id="planStart" inputmode="numeric"/></div>
+          <div class="grow"><label class="fld">+ per day</label><input id="planStep" inputmode="numeric"/></div>
+        </div>
+        <div class="row wrap">
+          <div class="grow"><label class="fld">Max (ml)</label><input id="planCap" inputmode="numeric"/></div>
+          <div class="grow"><label class="fld">Feed every (hrs)</label><input id="planEvery" inputmode="numeric"/></div>
+        </div>
+        <button class="btn sm" id="savePlan" style="margin-top:10px;">Save plan</button>
+        <div id="planTable" style="margin-top:12px;"></div>
+        <div class="disc">This only calculates the plan your doctor gave you — it isn't medical advice. If baby seems unwell, won't feed, has very few wet diapers, or you're worried, contact your pediatrician.</div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;">Is this normal? — newborn quick answers</h3>
+        <div id="faqList"></div>
+      </div>
     </div>
   </section>
 
@@ -354,7 +481,7 @@
   <button data-tab="log"><span class="ic">📋</span>Log</button>
   <button data-tab="go"><span class="ic">🚦</span>Go?</button>
   <button data-tab="prep"><span class="ic">🎒</span>Prep</button>
-  <button data-tab="baby"><span class="ic">👶</span>Baby</button>
+  <button data-tab="baby"><span class="ic">👶</span>Newborn</button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -396,7 +523,11 @@ const defaultState=()=>({
   bag:{mom:[],partner:[],baby:[]},
   bagDone:{},                 // "mom:item" -> true
   kicks:[],
-  baby:[]                     // {t, type, kind:'feed'|'diaper', detail}
+  baby:[],                    // {t, kind:'feed'|'diaper'|'milk'|'weight', detail, meta}
+  babyName:'',                // shared newborn settings (synced via labor_meta)
+  birth:null,                 // birth timestamp ms
+  feedPlan:{startMl:20, stepMl:10, capMl:120, intervalMin:180},
+  metaAt:0                    // last local change to shared settings
 });
 let S=load();
 function load(){ try{const r=JSON.parse(localStorage.getItem(KEY)); return r?Object.assign(defaultState(),r):defaultState();}catch(e){return defaultState();} }
@@ -627,37 +758,154 @@ function renderKicks(){
     : `${10-k.length} to go · ${fmtDur(span)} elapsed`;
 }
 
-/* ---------------- baby tracker ---------------- */
-let feedSel='Left breast';
-function todayBaby(){ const d=new Date(); d.setHours(0,0,0,0); return S.baby.filter(b=>b.t>=d.getTime()); }
-function logBabyEntry(kind,detail){ const e={t:now(),kind,detail}; S.baby.push(e); save(); renderBaby(); toast(detail+' logged'); if(ROOM) sbUpsertBaby(e); }
-function renderBaby(){
-  const t=todayBaby();
-  const feeds=t.filter(b=>b.kind==='feed');
-  $('#bFeeds').textContent=feeds.length;
-  $('#bWet').textContent=t.filter(b=>b.kind==='diaper'&&/Wet|Both/.test(b.detail)).length;
-  $('#bDirty').textContent=t.filter(b=>b.kind==='diaper'&&/Dirty|Both/.test(b.detail)).length;
-  const lastFeed=feeds[feeds.length-1];
-  $('#bSinceFeed').textContent=lastFeed?`Last feed ${fmtDur(now()-lastFeed.t)} ago (${fmtClock(lastFeed.t)})`:'No feeds logged today.';
-  const w=$('#babyLog'); w.innerHTML='';
-  S.baby.slice(-25).reverse().forEach(b=>{
+/* ---------------- newborn module ---------------- */
+const DAY=86400000;
+function startOfDay(t){ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); }
+function dayOfLife(){ if(!S.birth) return null; return Math.floor((startOfDay(now())-startOfDay(S.birth))/DAY)+1; }
+function fmtAge(){
+  if(!S.birth) return {big:'—', sub:'Set the birth date in the Info tab'};
+  const ms=now()-S.birth, days=Math.floor(ms/DAY), hrs=Math.floor((ms%DAY)/3600000);
+  return {big: days<1 ? hrs+'h old' : days+(days===1?' day':' days')+' old', sub:'Day '+dayOfLife()+' of life'};
+}
+function recMl(){ const p=S.feedPlan, d=dayOfLife()||1; return Math.min(p.capMl, p.startMl+(d-1)*p.stepMl); }
+function todayEvents(kind){ const d=startOfDay(now()); return S.baby.filter(b=>b.t>=d && (!kind||b.kind===kind)); }
+function lastOf(kind){ const a=S.baby.filter(b=>b.kind===kind).sort((x,y)=>x.t-y.t); return a.length?a[a.length-1]:null; }
+function isPee(d){ return d.meta? !!d.meta.pee : /wet|both/i.test(d.detail); }
+function isPoop(d){ return d.meta? !!d.meta.poop : /dirty|both/i.test(d.detail); }
+function feedIcon(b){ return b.meta&&b.meta.type==='breast' ? '🤱' : '🍼'; }
+function evIcon(b){ return b.kind==='feed'?feedIcon(b) : b.kind==='diaper'?'🧷' : b.kind==='milk'?'📈' : b.kind==='weight'?'⚖️' : '•'; }
+
+function logBabyEvent(e){ S.baby.push(e); save(); renderNewborn(); toast((e.detail||'Logged')); if(ROOM) sbUpsertBaby(e); }
+function logFeedEvent(meta){
+  const detail = meta.type==='breast'
+    ? 'Breast'+(meta.side?' ('+meta.side+')':'')+(meta.min?' · '+meta.min+'m':'')
+    : 'Formula '+meta.ml+' ml';
+  logBabyEvent({t:now(), kind:'feed', detail, meta});
+}
+function logDiaperEvent(){
+  const what=($('#diaWhat button.on')||{}).dataset?.d || 'wet';
+  const pee=what==='wet'||what==='both', poop=what==='dirty'||what==='both';
+  const meta={pee,poop};
+  if(poop){ meta.color=($('#poopColor button.on')||{}).dataset?.c; meta.consistency=($('#poopCons button.on')||{}).dataset?.k; }
+  let detail = pee&&poop ? 'Wet + dirty' : pee ? 'Wet 💧' : 'Dirty 💩';
+  if(poop && meta.color) detail+=' ('+meta.color+(meta.consistency?', '+meta.consistency:'')+')';
+  logBabyEvent({t:now(), kind:'diaper', detail, meta});
+}
+function logMilk(r){
+  const d=startOfDay(now());
+  S.baby=S.baby.filter(b=>!(b.kind==='milk'&&b.t>=d));   // one rating per day
+  const labels={1:'Hard',2:'A little',3:'OK',4:'Good',5:'Flowing'};
+  logBabyEvent({t:now(), kind:'milk', detail:'Breastfeeding: '+labels[r], meta:{rating:r}});
+}
+function logWeight(g){ logBabyEvent({t:now(), kind:'weight', detail:g+' g', meta:{grams:g}}); }
+
+function renderNextFeed(){
+  const lf=lastOf('feed'), every=(S.feedPlan.intervalMin||180)*60000;
+  if(!lf){ $('#nbNextFeed').textContent='Now'; $('#nbFeedHint').textContent='No feed logged yet today.'; return; }
+  const diff=lf.t+every-now();
+  $('#nbNextFeed').textContent = diff<=0 ? 'Due now' : 'in '+fmtDur(diff);
+  $('#nbFeedHint').textContent='Last feed '+fmtClock(lf.t)+' ('+fmtDur(now()-lf.t)+' ago). Newborns usually feed ~8–12×/24h — feed on demand, don\'t force the clock.';
+}
+function renderExpect(){
+  const dol=dayOfLife(), el=$('#nbExpect');
+  if(!dol){ el.style.display='none'; return; } el.style.display='block';
+  const wetExp=Math.min(6,dol), dirtyExp=dol>=4?3:dol;
+  const dia=todayEvents('diaper'), wet=dia.filter(isPee).length, dirty=dia.filter(isPoop).length;
+  el.innerHTML=`<div class="small"><b>Day ${dol} rough guide:</b> roughly <b>${wetExp}+ wet</b> and <b>${dirtyExp}+ dirty</b> in 24h.</div>
+    <div class="hint">So far today: ${wet} wet, ${dirty} dirty. A very sleepy baby who won't wake to feed, far fewer wet diapers than expected, or no wet diaper in 6+ hours → call your pediatrician.</div>`;
+}
+function renderEventList(el, events, emptyMsg){
+  el.innerHTML='';
+  if(!events.length){ el.innerHTML=`<div class="muted small center" style="padding:12px;">${emptyMsg}</div>`; return; }
+  events.slice().reverse().forEach(b=>{
     const div=document.createElement('div'); div.className='check'; div.style.cursor='pointer';
-    const icon=b.kind==='feed'?'🍼':'🧷';
-    div.innerHTML=`<span style="font-size:18px">${icon}</span><span class="grow">${b.detail}</span><span class="muted tiny">${fmtClock(b.t)} ✕</span>`;
+    div.innerHTML=`<span style="font-size:18px">${evIcon(b)}</span><span class="grow">${b.detail}</span><span class="muted tiny">${fmtClock(b.t)} ✕</span>`;
     div.addEventListener('click',async ()=>{
-      if(!confirm('Delete this entry?')) return;
-      S.baby=S.baby.filter(x=>x.t!==b.t); save(); renderBaby();
+      if(!confirm('Delete this entry?\n\n'+b.detail)) return;
+      S.baby=S.baby.filter(x=>x.t!==b.t); save(); renderNewborn();
       if(ROOM) await sbDeleteOne('labor_baby','t_ms',b.t);
     });
-    w.appendChild(div);
+    el.appendChild(div);
   });
-  if(!S.baby.length) w.innerHTML='<div class="muted small center" style="padding:14px;">Nothing logged yet.</div>';
+}
+function renderMilkTrend(){
+  const byDay={};
+  S.baby.filter(b=>b.kind==='milk').forEach(b=>{ byDay[startOfDay(b.t)]=b.meta?b.meta.rating:3; });
+  const days=Object.keys(byDay).map(Number).sort().slice(-7);
+  const face={1:'😣',2:'😕',3:'🙂',4:'😀',5:'🤱'};
+  $('#milkTrend').innerHTML = days.length
+    ? '<div class="small muted">Recent days</div><div style="font-size:22px; letter-spacing:4px;">'+days.map(d=>face[byDay[d]]).join('')+'</div>'
+    : '<div class="tiny muted">Tap a face above to start tracking your supply day by day.</div>';
+}
+function renderWeights(){
+  const ws=S.baby.filter(b=>b.kind==='weight').sort((a,b)=>a.t-b.t);
+  if(!ws.length){ $('#weightOut').innerHTML='<div class="tiny muted">No weights logged yet.</div>'; return; }
+  const birthW=ws[0].meta.grams, last=ws[ws.length-1].meta.grams;
+  const pct=birthW?((last-birthW)/birthW*100):0;
+  let rows=ws.slice().reverse().map(w=>{
+    const dol=S.birth?Math.floor((startOfDay(w.t)-startOfDay(S.birth))/DAY)+1:'–';
+    const dp=birthW?(((w.meta.grams-birthW)/birthW*100)).toFixed(1):'0';
+    return `<tr><td>Day ${dol}</td><td>${w.meta.grams} g</td><td>${dp>0?'+':''}${dp}%</td></tr>`;
+  }).join('');
+  $('#weightOut').innerHTML=`<div class="small">Latest <b>${last} g</b> · ${pct>=0?'+':''}${pct.toFixed(1)}% from birth (${birthW} g)</div>
+    <table style="margin-top:8px;"><thead><tr><th>Age</th><th>Weight</th><th>vs birth</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderPlanTable(){
+  const p=S.feedPlan; let rows='', dol=dayOfLife();
+  for(let d=1; d<=14; d++){ const ml=Math.min(p.capMl,p.startMl+(d-1)*p.stepMl);
+    rows+=`<tr${dol===d?' style="color:var(--accent);font-weight:700;"':''}><td>Day ${d}</td><td>${ml} ml</td></tr>`;
+    if(ml>=p.capMl){ rows+=`<tr><td>Day ${d+1}+</td><td>${p.capMl} ml</td></tr>`; break; } }
+  $('#planTable').innerHTML=`<table><thead><tr><th>Day of life</th><th>Per missed feed</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+const FAQ=[
+  {q:'Hiccups — okay?', a:'Yes, very common and harmless. Often after feeds from a bit of swallowed air. They stop on their own; a burp or letting him suck can help.'},
+  {q:'Spit-up after feeds', a:'A small amount is normal ("happy spitter"). Keep him upright a bit after feeds and burp him. Forceful/projectile vomiting, green vomit, or poor weight gain → call the doctor.'},
+  {q:'Sneezing, snorts, noisy breathing', a:'Newborns sneeze to clear their tiny noses and breathe noisily/irregularly — usually normal. Fast laboured breathing, ribs pulling in, grunting, or blue lips → urgent, call now.'},
+  {q:'Losing weight the first days', a:'Up to ~7–10% loss is expected, with birth weight usually regained by ~10–14 days. The Growth tab tracks this. Bigger drops or no regain → check with your provider.'},
+  {q:'Poop colours', a:'Day 1–3: black sticky meconium → then greenish → then yellow & seedy (breast) or tan (formula). All normal. Red blood, white/chalky, or black after day 4 → call the doctor.'},
+  {q:'How often to feed', a:'~8–12 feeds per 24h, roughly every 2–3h, including waking him at least every 3–4h in the early days if he\'s very sleepy, until weight gain is established.'},
+  {q:'Lots of crying', a:'Newborns cry to communicate hunger, tiredness, wind, a dirty diaper, or just needing contact. Check the basics, hold/skin-to-skin, gentle rocking. Inconsolable for hours or a weak/high-pitched cry → call.'},
+  {q:'Vitamin D', a:'Many providers recommend a daily vitamin D drop for newborns (especially breastfed). Confirm the dose with your pediatrician.'}
+];
+const FAQ_RED='<div class="warn"><h3 style="font-size:13px;">Call a doctor straight away if:</h3><ul class="small" style="margin:4px 0 0; padding-left:18px; line-height:1.6;"><li>Fever ≥ 38°C / 100.4°F (or feels very cold)</li><li>Won\'t wake to feed, or refuses feeds</li><li>Fast/laboured breathing, grunting, blue lips</li><li>Far fewer wet diapers, or none in 6+ hours</li><li>Yellowing skin or eyes that\'s spreading</li><li>Limp, floppy, or a weak high-pitched cry</li></ul></div>';
+function renderFAQ(){
+  $('#faqList').innerHTML = FAQ.map(f=>`<details><summary>${f.q}</summary><p>${f.a}</p></details>`).join('')+FAQ_RED;
+}
+function toLocalInput(ms){ const d=new Date(ms), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); }
+function fillSettings(){
+  $('#setName').value=S.babyName||'';
+  $('#setBirth').value=S.birth?toLocalInput(S.birth):'';
+  $('#planStart').value=S.feedPlan.startMl; $('#planStep').value=S.feedPlan.stepMl;
+  $('#planCap').value=S.feedPlan.capMl; $('#planEvery').value=(S.feedPlan.intervalMin/60);
+}
+function renderNewborn(){
+  const a=fmtAge(); $('#nbAge').textContent=a.big; $('#nbAgeSub').textContent=a.sub;
+  $('#nbName').textContent=S.babyName||'Baby';
+  $('#nbRecMl').textContent = S.birth ? recMl()+' ml' : '— ml';
+  renderNextFeed();
+  const feeds=todayEvents('feed'), dia=todayEvents('diaper');
+  $('#nbFeeds').textContent=feeds.length;
+  $('#nbMl').textContent=feeds.reduce((s,f)=>s+(f.meta&&f.meta.type==='formula'?(+f.meta.ml||0):0),0);
+  $('#nbWet').textContent=dia.filter(isPee).length;
+  $('#nbDirty').textContent=dia.filter(isPoop).length;
+  renderExpect();
+  renderEventList($('#babyLog'), S.baby.slice(-25), 'Nothing logged yet.');
+  renderEventList($('#feedRecent'), todayEvents('feed'), 'No feeds yet today.');
+  renderEventList($('#diaRecent'), todayEvents('diaper'), 'No diapers yet today.');
+  renderMilkTrend(); renderWeights(); renderPlanTable();
+  $('#formulaHint').textContent = S.birth
+    ? 'Today (day '+dayOfLife()+'): give '+recMl()+' ml per missed breastfeed.'
+    : 'Set the birth date in Info to auto-calculate.';
 }
 function babyText(){
-  const t=todayBaby();
-  let s='Baby log '+new Date().toLocaleDateString()+'\n';
-  s+=`Feeds: ${t.filter(b=>b.kind==='feed').length} · Wet: ${t.filter(b=>/Wet|Both/.test(b.detail)).length} · Dirty: ${t.filter(b=>/Dirty|Both/.test(b.detail)).length}\n\n`;
-  t.forEach(b=>{ s+=`${fmtClock(b.t)}  ${b.kind==='feed'?'🍼':'🧷'} ${b.detail}\n`; });
+  const t=todayEvents();
+  let s=(S.babyName||'Baby')+' — log '+new Date().toLocaleDateString();
+  if(S.birth) s+=' (day '+dayOfLife()+')'; s+='\n';
+  const feeds=t.filter(b=>b.kind==='feed');
+  const ml=feeds.reduce((a,f)=>a+(f.meta&&f.meta.type==='formula'?(+f.meta.ml||0):0),0);
+  s+=`Feeds: ${feeds.length} (formula ${ml} ml) · Wet: ${t.filter(isPee).length} · Dirty: ${t.filter(isPoop).length}\n\n`;
+  t.forEach(b=>{ s+=`${fmtClock(b.t)}  ${evIcon(b)} ${b.detail}\n`; });
   return s;
 }
 
@@ -665,7 +913,9 @@ function babyText(){
 function copy(text){ navigator.clipboard?.writeText(text).then(()=>toast('Copied'),()=>toast('Copy failed')); }
 
 /* ---------------- render all ---------------- */
-function renderAll(){ renderStatus(); refreshLast(); renderLog(); renderKicks(); renderBaby(); }
+function renderAll(){ renderStatus(); refreshLast(); renderLog(); renderKicks(); renderNewborn(); }
+/* generic single-select segmented control */
+function segSelect(container, btn){ $$(container+' button').forEach(x=>x.classList.toggle('on',x===btn)); }
 
 /* ---------------- events ---------------- */
 $('#bigBtn').addEventListener('click',()=>{ S.active?stopContraction():startContraction(); navigator.vibrate?.(30); });
@@ -690,16 +940,56 @@ $('#bagAddBtn').addEventListener('click',()=>{ const v=$('#bagAdd').value.trim()
 $('#breathBtn').addEventListener('click',toggleBreath);
 $('#kickBtn').addEventListener('click',()=>{ S.kicks.push(now()); save(); renderKicks(); navigator.vibrate?.(20); });
 $('#kickReset').addEventListener('click',()=>{ S.kicks=[]; save(); renderKicks(); });
-$$('#feedType button').forEach(b=>b.addEventListener('click',()=>{
-  feedSel=b.dataset.f; $$('#feedType button').forEach(x=>x.classList.toggle('on',x===b)); }));
-$('#logFeed').addEventListener('click',()=>logBabyEntry('feed',feedSel));
-$('#logWet').addEventListener('click',()=>logBabyEntry('diaper','Wet 💧'));
-$('#logDirty').addEventListener('click',()=>logBabyEntry('diaper','Dirty 💩'));
-$('#logBoth').addEventListener('click',()=>logBabyEntry('diaper','Both 💧💩'));
+/* newborn sub-nav */
+$$('#nbNav button').forEach(b=>b.addEventListener('click',()=>{
+  segSelect('#nbNav',b); const v=b.dataset.nb;
+  $$('.nbview').forEach(x=>x.style.display=(x.id==='nb-'+v)?'block':'none');
+  if(v==='feed'){ $('#feedMl').value=S.birth?recMl():''; }
+  if(v==='info'){ fillSettings(); renderFAQ(); }
+  window.scrollTo(0,0);
+}));
+$('#nbGoFeed').addEventListener('click',()=>$('#nbNav button[data-nb="feed"]').click());
+$('#nbGoDiaper').addEventListener('click',()=>$('#nbNav button[data-nb="diaper"]').click());
+/* feed */
+$$('#feedSide button').forEach(b=>b.addEventListener('click',()=>segSelect('#feedSide',b)));
+$('#logBreast').addEventListener('click',()=>{
+  const side=($('#feedSide button.on')||{}).dataset?.side||'left';
+  const min=parseInt($('#feedMin').value)||null;
+  logFeedEvent({type:'breast', side, min}); $('#feedMin').value='';
+});
+$('#logFormula').addEventListener('click',()=>{
+  const ml=parseInt($('#feedMl').value);
+  if(!ml||ml<=0){ toast('Enter ml'); return; }
+  logFeedEvent({type:'formula', ml});
+});
+/* diaper */
+$$('#diaWhat button').forEach(b=>b.addEventListener('click',()=>{
+  segSelect('#diaWhat',b);
+  const poop=b.dataset.d==='dirty'||b.dataset.d==='both';
+  $('#poopDetail').style.display=poop?'block':'none';
+}));
+$$('#poopColor button').forEach(b=>b.addEventListener('click',()=>segSelect('#poopColor',b)));
+$$('#poopCons button').forEach(b=>b.addEventListener('click',()=>segSelect('#poopCons',b)));
+$('#logDiaper').addEventListener('click',logDiaperEvent);
+/* growth */
+$$('#milkRate button').forEach(b=>b.addEventListener('click',()=>{ segSelect('#milkRate',b); logMilk(+b.dataset.r); }));
+$('#logWeight').addEventListener('click',()=>{ const g=parseInt($('#wInput').value); if(!g){toast('Enter grams');return;} logWeight(g); $('#wInput').value=''; });
+/* info / settings */
+$('#saveBaby').addEventListener('click',()=>{
+  S.babyName=$('#setName').value.trim();
+  const bv=$('#setBirth').value; S.birth=bv?new Date(bv).getTime():null;
+  S.metaAt=now(); save(); renderNewborn(); toast('Saved'); if(ROOM) sbUpsertMeta();
+});
+$('#savePlan').addEventListener('click',()=>{
+  const num=(id,def)=>{ const v=parseFloat($(id).value); return isNaN(v)?def:v; };
+  S.feedPlan={ startMl:num('#planStart',20), stepMl:num('#planStep',10),
+    capMl:num('#planCap',120), intervalMin:Math.round(num('#planEvery',3)*60) };
+  S.metaAt=now(); save(); renderNewborn(); renderPlanTable(); toast('Plan saved'); if(ROOM) sbUpsertMeta();
+});
 $('#resetBaby').addEventListener('click',async ()=>{
-  const msg=ROOM?('Clear the baby log for EVERYONE on code "'+ROOM+'"?'):'Clear baby log?';
+  const msg=ROOM?('Clear the whole newborn log for EVERYONE on code "'+ROOM+'"?'):'Clear newborn log?';
   if(!confirm(msg)) return;
-  S.baby=[]; save(); renderBaby();
+  S.baby=[]; save(); renderNewborn();
   if(ROOM) await sbDelete('labor_baby'); });
 $('#copyBaby').addEventListener('click',()=>copy(babyText()));
 
@@ -764,7 +1054,27 @@ async function sbUpsert(table, rows){
     body:JSON.stringify(rows)}); }catch(e){ syncOk=false; renderSync(); }
 }
 function sbUpsertContraction(c){ return sbUpsert('labor_contractions',[{room:ROOM,start_ms:c.start,end_ms:c.end,intensity:c.intensity}]); }
-function sbUpsertBaby(b){ return sbUpsert('labor_baby',[{room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail}]); }
+function sbUpsertBaby(b){ return sbUpsert('labor_baby',[{room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail,meta:b.meta||null}]); }
+async function sbUpsertMeta(){
+  if(!ROOM) return;
+  try{ await fetch(SB_URL+'/rest/v1/labor_meta',{method:'POST',
+    headers:sbHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify([{room:ROOM, data:{babyName:S.babyName,birth:S.birth,feedPlan:S.feedPlan}, updated_at:new Date(S.metaAt||now()).toISOString()}])}); }catch(e){}
+}
+async function sbPullMeta(){
+  if(!ROOM) return;
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/labor_meta?room=eq.'+encodeURIComponent(ROOM)+'&select=data,updated_at',{headers:sbHeaders()});
+    if(!r.ok) return; const rows=await r.json(); if(!rows.length) return;
+    const remoteAt=new Date(rows[0].updated_at).getTime(), data=rows[0].data||{};
+    if(remoteAt>(S.metaAt||0)){
+      if(data.babyName!==undefined) S.babyName=data.babyName;
+      if(data.birth!==undefined) S.birth=data.birth;
+      if(data.feedPlan) S.feedPlan=Object.assign({startMl:20,stepMl:10,capMl:120,intervalMin:180},data.feedPlan);
+      S.metaAt=remoteAt; save(); fillSettings(); renderNewborn();
+    }
+  }catch(e){}
+}
 async function sbDelete(table){
   if(!ROOM) return;
   try{ await fetch(SB_URL+'/rest/v1/'+table+'?room=eq.'+encodeURIComponent(ROOM),
@@ -783,7 +1093,7 @@ function mergeContractions(rows){
 }
 function mergeBaby(rows){
   const by={}; S.baby.forEach(b=>{ by[b.t]=b; });
-  const remote={}; rows.forEach(r=>{ by[r.t_ms]={t:r.t_ms,kind:r.kind,detail:r.detail}; remote[r.t_ms]=1; });
+  const remote={}; rows.forEach(r=>{ by[r.t_ms]={t:r.t_ms,kind:r.kind,detail:r.detail,meta:r.meta||undefined}; remote[r.t_ms]=1; });
   Object.values(by).forEach(b=>{ if(!remote[b.t]) sbUpsertBaby(b); });
   S.baby=Object.values(by).sort((a,b)=>a.t-b.t);
 }
@@ -793,10 +1103,11 @@ async function sbPull(){
     const q=p=>SB_URL+'/rest/v1/'+p+'&room=eq.'+encodeURIComponent(ROOM);
     const [cr,br]=await Promise.all([
       fetch(q('labor_contractions?select=start_ms,end_ms,intensity&order=start_ms'),{headers:sbHeaders()}),
-      fetch(q('labor_baby?select=t_ms,kind,detail&order=t_ms'),{headers:sbHeaders()})
+      fetch(q('labor_baby?select=t_ms,kind,detail,meta&order=t_ms'),{headers:sbHeaders()})
     ]);
     if(!cr.ok || !br.ok) throw new Error('http '+cr.status+'/'+br.status);
     mergeContractions(await cr.json()); mergeBaby(await br.json());
+    await sbPullMeta();
     save(); renderAll();
     syncOk=true; renderSync();
   }catch(e){ syncOk=false; renderSync(); }
@@ -809,8 +1120,9 @@ async function joinRoom(code){
   ROOM=code; localStorage.setItem('babyday.room',ROOM);
   syncOk=false; renderSync();
   const cs=S.contractions.filter(c=>c.end!=null).map(c=>({room:ROOM,start_ms:c.start,end_ms:c.end,intensity:c.intensity}));
-  const bs=S.baby.map(b=>({room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail}));
+  const bs=S.baby.map(b=>({room:ROOM,t_ms:b.t,kind:b.kind,detail:b.detail,meta:b.meta||null}));
   await sbUpsert('labor_contractions',cs); await sbUpsert('labor_baby',bs);   // upload what's already here
+  if(S.metaAt) await sbUpsertMeta();
   await sbPull(); startPoll();
   toast('Syncing as "'+ROOM+'"');
 }
@@ -876,11 +1188,18 @@ $('#eSave').addEventListener('click',async ()=>{
 
 /* ---------------- init ---------------- */
 $('#ruleSel').value=S.rule;
-renderContacts(); renderBag(); renderAll(); refreshTimer(); renderSync();
+renderContacts(); renderBag(); renderAll(); refreshTimer(); renderSync(); fillSettings(); renderFAQ();
 if(ROOM) startPoll();
 if(S.active) startTick();
-// keep "since last" / live clock ticking
-setInterval(()=>{ if(document.querySelector('#v-timer.active')) refreshTimer(); },1000);
+// if the baby has arrived, open the Newborn tab by default
+if(S.birth && !S.active){ const nb=document.querySelector('nav.tabs button[data-tab="baby"]'); if(nb) nb.click(); }
+// keep live clocks ticking (contraction timer + newborn next-feed countdown)
+setInterval(()=>{
+  if(document.querySelector('#v-timer.active')) refreshTimer();
+  if(document.querySelector('#v-baby.active') && document.getElementById('nb-now').style.display!=='none'){
+    renderNextFeed(); const a=fmtAge(); $('#nbAge').textContent=a.big; $('#nbAgeSub').textContent=a.sub;
+  }
+},1000);
 
 /* service worker for offline */
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
